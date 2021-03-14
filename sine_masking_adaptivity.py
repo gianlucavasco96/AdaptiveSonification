@@ -46,12 +46,6 @@ win_noise = buf_noise * win[:, None]
 Signal, f_signal, t_signal = stft(win_signal, hop_size, fs)
 Noise, f_noise, t_noise = stft(win_noise, hop_size, fs)
 
-# plot spectra
-plt.subplot(221)
-plot_spectrum(Signal, f_signal, t_signal, title='signal spectrum')
-plt.subplot(222)
-plot_spectrum(Noise, f_noise, t_noise, title='noise spectrum')
-
 # filter banks and central frequencies
 scale = 'erb'                                                       # frequency scale
 fb_signal, cnt_signal = getFilterBank(f_signal, scale=scale)        # filter bank for signal
@@ -61,12 +55,21 @@ fb_noise, cnt_noise = getFilterBank(f_noise, scale=scale)           # filter ban
 signal_bands = applyFilterBank(abs(Signal), fb_signal)
 noise_bands = applyFilterBank(abs(Noise), fb_noise)
 
-# band splitted signal plots
+# maximum dB values for plot comparison
+max_db_signal = maximum_db(Signal, signal_bands)
+max_db_noise = maximum_db(Noise, noise_bands)
 
+# plot spectra
+plt.subplot(221)
+plot_spectrum(Signal, f_signal, t_signal, title='signal spectrum', max_db=max_db_signal)
+plt.subplot(222)
+plot_spectrum(Noise, f_noise, t_noise, title='noise spectrum', max_db=max_db_noise)
+
+# band splitted signal plots
 plt.subplot(223)
-plot_spectrum(signal_bands, f_signal, t_signal, title='band splitted signal')
+plot_spectrum(signal_bands, f_signal, t_signal, title='band splitted signal', max_db=max_db_signal, freq_scale=scale)
 plt.subplot(224)
-plot_spectrum(noise_bands, f_noise, t_noise, title='band splitted noise')
+plot_spectrum(noise_bands, f_noise, t_noise, title='band splitted noise', max_db=max_db_noise, freq_scale=scale)
 plt.show()
 
 # convert center frequencies into Hz
@@ -77,13 +80,8 @@ cnt_hz_n = scale2f(cnt_noise, scale)
 snr_target = 5                                                      # desired SNR
 n_bands, n_frames = signal_bands.shape                              # number of bands and number of frames
 limits = [0.9, 4.0]                                                 # limits for the modulation factor
-k = np.zeros((n_bands, n_frames))                                   # list of modulation factors
 
-for i in range(n_bands):
-    for j in range(n_frames):
-        cur_signal = signal_bands[i, j]                     # energy of the i-th band of the j-th frame of the signal
-        cur_noise = noise_bands[i, j]                       # energy of the i-th band of the j-th frame of the noise
-        k[i][j] = set_snr(cur_signal, cur_noise, snr_target, limits, onlyk=True)    # compute the current k factor
+k = set_snr_matrix(signal_bands, noise_bands, snr_target, limits)   # compute modulation factor matrix
 
 # interpolation
 k_interp = pchip_interpolate(cnt_hz_s, k, f_signal)
@@ -92,17 +90,21 @@ k_interp = pchip_interpolate(cnt_hz_s, k, f_signal)
 Signal_eq = Signal * k_interp
 
 # plot new spectrum
+max_db = maximum_db(Signal, Signal_eq)
 plt.subplot(121)
-plot_spectrum(Signal, f_signal, t_signal, title='original signal spectrum')
+plot_spectrum(Signal, f_signal, t_signal, title='original signal spectrum', max_db=max_db)
 plt.subplot(122)
-plot_spectrum(Signal_eq, f_signal, t_signal, title='equalized signal spectrum')
+plot_spectrum(Signal_eq, f_signal, t_signal, title='equalized signal spectrum', max_db=max_db)
 plt.show()
 
 # inverse STFT to get equalized audio signal
 signal_eq = istft(Signal_eq)
 
+# equalized signal is windowed again with hanning window, to remove modulation artifacts
+signal_eq = signal_eq * win[:, None]
+
 # unbuffer the matrix to obtain the audio signal vector
-signal_eq = unbuffer(signal_eq, hop_size, w=win, ln=tone.size)
+signal_eq = unbuffer(signal_eq, hop_size, w=win**2, ln=tone.size)
 
 # playback the equalized audio signal plus the noisy signal
 noisy_signal = signal_eq + amb_sound

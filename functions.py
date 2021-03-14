@@ -123,9 +123,6 @@ def envelope(x, method='rms', param=512):
 def erb2f(erb):
     """This function converts ERB scale values into frequency values"""
 
-    # f = (100000 * (10 * erb - 247)) / 107939                              # linear approximation
-    # f = (500/623) * (np.sqrt(249200 * erb + 80109737) - 9339)             # polynomial approximation
-
     A = 1000 * np.log(10) / (24.7 * 4.37)
     f = (10 ** (erb / A) - 1) / 0.00437
 
@@ -155,9 +152,6 @@ def f2bark(f):
 
 def f2erb(f):
     """This function converts frequency values into ERB scale values"""
-
-    # erb = 24.7 * (4.37 * f / 1000 + 1)                                    # linear approximation
-    # erb = 6.23 * (f/1000) ** 2 + 93.39 * (f/1000) + 28.52                   # polynomial approximation
 
     A = 1000 * np.log(10) / (24.7 * 4.37)
     erb = A * np.log10(1 + f * 0.00437)
@@ -198,7 +192,7 @@ def fade(x, leng, typ='inout', shape=2):
     return x
 
 
-def getFilterBank(F, bw=100, scale='mel', wfunc=np.bartlett):
+def getFilterBank(F, nband=18, scale='mel', wfunc=np.bartlett):
     """This function returns a matrix of overlapping masks of size bw*2+1 and center freq. array
     Masks have wfunc shape and are equally spaced in scale-space
     scale can be: 'mel', 'bark', 'st', 'erb' """
@@ -212,12 +206,10 @@ def getFilterBank(F, bw=100, scale='mel', wfunc=np.bartlett):
     }.get(scale.lower())
     mstrt = f2x(F[0]) if F[0] > 0 else f2x(F[1])
     mstop = f2x(F[-1])
-    bw = f2x(bw)
-    nband = int((mstop - mstrt) // bw - 1)
+    bw = (mstop - mstrt) / nband
     cnt = np.linspace(1, nband, nband) * bw
     low = x2f(cnt - bw)
     hig = x2f(cnt + bw)
-    # cnt = x2f(cnt)
     fbank = np.zeros((len(F), nband))
     for b in range(nband):
         il = findx(F, low[b])
@@ -318,7 +310,10 @@ def plot_spectrum(S, f, t, title=None, max_db=None, freq_scale='Hz'):
 def rms_energy(signal):
     """This function computes the root mean square energy of the input signal"""
 
-    return np.sqrt(np.mean(signal ** 2))
+    if isinstance(signal, np.ndarray):
+        return np.sqrt(np.mean(signal ** 2, axis=0))
+    else:
+        return np.sqrt(np.mean(signal ** 2))
 
 
 def scale2f(signal, scale):
@@ -356,7 +351,11 @@ def set_snr(signal, noise, snr_target, limits=None, onlyk=False):
     to noise ratio is the one specified by the 3rd parameter"""
 
     snr_real = snr(signal, noise)                   # compute real signal to noise ratio
-    k = snr_target / (snr_real + eps)                 # compute the ratio between the target and the real snr
+
+    if snr_real == 0:                               # if it equals zero
+        snr_real += eps                             # add epsilon to avoid zero division
+
+    k = snr_target / snr_real                       # compute the ratio between the target and the real snr
 
     if limits is not None:
         min_value = limits[0]                       # set minimum modulation value
@@ -375,10 +374,54 @@ def set_snr(signal, noise, snr_target, limits=None, onlyk=False):
         return mod_signal
 
 
+def set_snr_matrix(signal, noise, snr_target, limits=None):
+    """This function takes in input a clear signal and a noise signal (this time they are matrices) and modifies
+    the clear one so that the signal to noise ratio is the one specified by the 3rd parameter"""
+
+    snr_real = np.abs(signal) / np.abs(noise)       # this is the same of the snr, since it is done element by element
+
+    idx = np.where(snr_real == 0)                   # check if any value is 0
+    num_zero = len(idx[0])                          # number of zero elements
+
+    if num_zero > 0:                                # if any
+        for i in range(num_zero):                   # for each zero value
+            r = idx[0][i]                           # row index of the current zero value
+            c = idx[1][i]                           # column index of the current zero value
+            snr_real[r][c] += eps                   # add epsilon to avoid zero divisions
+
+    k = snr_target / snr_real                       # compute the ratio between the target and the real snr
+
+    if limits is not None:
+        min_value = limits[0]                       # set minimum modulation value
+        max_value = limits[1]                       # set maximum modulation value
+
+        idx_min = np.where(k < min_value)           # check if any value is less than the minimum limit
+        num_min = len(idx_min[0])                   # number of elements less than the minimum limit
+        if num_min > 0:                             # if any
+            for i in range(num_min):                # for each of these values
+                r = idx_min[0][i]                   # row index of the current value
+                c = idx_min[1][i]                   # column index of the current value
+                k[r][c] = min_value                 # set the current value to minumum value
+
+        idx_max = np.where(k > max_value)           # check if any value is greater than the maximum limit
+        num_max = len(idx_max[0])                   # number of elements greater than the maximum limit
+        if num_max > 0:                             # if any
+            for i in range(num_max):                # for each of these values
+                r = idx_max[0][i]                   # row index of the current value
+                c = idx_max[1][i]                   # column index of the current value
+                k[r][c] = max_value                 # set the current value to the maximum value
+
+    return k
+
+
 def snr(x, y):
     """This function computes the signal to noise ratio between the two input signals x and y"""
 
-    return rms_energy(x) / (rms_energy(y) + eps)
+    rms_x = rms_energy(x)
+    rms_y = rms_energy(y)
+    rms_y = rms_y if rms_y != 0 else rms_y + eps
+
+    return rms_x / rms_y
 
 
 def stft(x, hopsize=None, fs=None):

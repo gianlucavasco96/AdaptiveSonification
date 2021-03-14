@@ -5,8 +5,8 @@ from scipy.interpolate import pchip_interpolate
 
 # ambience sound path: Urban Sound dataset has been used to simulate enviromental sounds
 noise_path = 'D:/Gianluca/Università/Magistrale/Dataset/UrbanSound/data/'
-sound_type = 'air_conditioner'
-noise_name = '47160.wav'
+sound_type = 'car_horn'
+noise_name = '44278.wav'
 
 # sonification sound: piano samples, C major scale
 sound_path = 'D:/Gianluca/Università/Magistrale/Tesi/'
@@ -30,6 +30,9 @@ sonification = sonification / max_sample
 # signals adjusting: they must have the same length
 sonification, amb_sound = set_same_length(sonification, amb_sound)
 
+# set the same loudness, with rms
+sonification = sonification * rms_energy(amb_sound) / rms_energy(sonification)
+
 # Masking adaptivity
 
 # setup parameters for STFT
@@ -50,7 +53,7 @@ Signal, f_signal, t_signal = stft(win_signal, hop_size, fs)
 Noise, f_noise, t_noise = stft(win_noise, hop_size, fs)
 
 # filter banks and central frequencies
-scale = 'erb'                                                               # frequency scale
+scale = 'erb'                                                         # frequency scale
 fb_signal, cnt_signal = getFilterBank(f_signal, scale=scale)          # filter bank for signal
 fb_noise, cnt_noise = getFilterBank(f_noise, scale=scale)             # filter bank for noise
 
@@ -80,19 +83,15 @@ cnt_hz_s = scale2f(cnt_signal, scale)
 cnt_hz_n = scale2f(cnt_noise, scale)
 
 # computation of modulation factors
-snr_target = 5                                                      # desired SNR
+snr_target = 2                                                      # desired SNR
 n_bands, n_frames = signal_bands.shape                              # number of bands and number of frames
 limits = [0.9, 4.0]                                                 # limits for the modulation factor
-k = np.zeros((n_bands, n_frames))                                   # list of modulation factors
 
-for i in range(n_bands):
-    for j in range(n_frames):
-        cur_signal = signal_bands[i, j]                     # energy of the i-th band of the j-th frame of the signal
-        cur_noise = noise_bands[i, j]                       # energy of the i-th band of the j-th frame of the noise
-        k[i][j] = set_snr(cur_signal, cur_noise, snr_target, limits, onlyk=True)    # compute the current k factor
+k = set_snr_matrix(signal_bands, noise_bands, snr_target, limits)   # compute modulation factor matrix
 
 # interpolation
-k_interp = pchip_interpolate(cnt_hz_s, k, f_signal)
+new_f = np.linspace(cnt_hz_s[0], cnt_hz_s[-1], len(f_signal))
+k_interp = pchip_interpolate(cnt_hz_s, k, new_f)
 
 # signal spectrum equalization
 Signal_eq = Signal * k_interp
@@ -108,9 +107,13 @@ plt.show()
 # inverse STFT to get equalized audio signal
 signal_eq = istft(Signal_eq)
 
+# equalized signal is windowed again with hanning window, to remove modulation artifacts
+signal_eq = signal_eq * win[:, None]
+
 # unbuffer the matrix to obtain the audio signal vector
-signal_eq = unbuffer(signal_eq, hop_size, w=win, ln=sonification.size)
+signal_eq = unbuffer(signal_eq, hop_size, w=win**2, ln=sonification.size)
 
 # playback the equalized audio signal plus the noisy signal
 noisy_signal = signal_eq + amb_sound
-sound(noisy_signal, fs)
+sound(noisy_signal, sr)
+
