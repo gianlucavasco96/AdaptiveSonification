@@ -2,12 +2,29 @@ import numpy as np
 import sounddevice as sd
 import scipy as sp
 import plotly.graph_objects as go
+import time
 from matplotlib import pyplot as plt
 from scipy.signal import butter, lfilter
 from scipy.interpolate import interp1d
 from pydub import AudioSegment
 
 eps = 10e-9                                         # dummy variable to avoid divide by zero errors
+
+
+def add_limit_bands(k, cnt, f):
+    """This function adds to matrix k two rows, one at the top and one at the bottom, such that k first and last
+    frequency values match f vector ones"""
+
+    first_row = k[0, :]                             # get the first row of k
+    last_row = k[-1, :]                             # get the last row of k
+
+    k = np.vstack((first_row, k))                   # append first duplicate row of k in 1st position
+    k = np.vstack((k, last_row))                    # append last duplicate row of k in last position
+
+    cnt = np.hstack((f[0], cnt))                    # append first freq value to center freq vector
+    cnt = np.hstack((cnt, f[-1]))                   # append last freq value to center freq vector
+
+    return k, cnt
 
 
 def amp2db(amp, thres=-np.inf):
@@ -28,17 +45,17 @@ def applyFilterBank(psd, fbank):
     return np.asarray([fltc(psd[:, c], fbank) for c in range(psd.shape[1])]).T
 
 
-def audioread(file_path):
+def audioread(file_path, fs=None):
     """This function reads the input file as an audio file, using the AudioSegment library"""
 
-    audio_format = file_path[-3:]
+    aud_format = file_path[-3:]
+    aud_seg = AudioSegment.from_file(file_path, aud_format)         # open file and create AudioSegment object
 
-    if audio_format == 'wav':
-        aud_seg = AudioSegment.from_wav(file_path)      # read the wav file
+    if fs is not None:
+        aud_seg.set_frame_rate(fs)
     else:
-        aud_seg = AudioSegment.from_mp3(file_path)
+        fs = aud_seg.frame_rate                         # sampling frequency
 
-    fs = aud_seg.frame_rate                             # sampling frequency
     aud_seg = aud_seg.set_channels(1)                   # conversion to mono
     samples = aud_seg.get_array_of_samples()            # get the array of samples
 
@@ -64,6 +81,20 @@ def bark2f(bark):
 
     # return 600 * np.sinh(bark/6)
     return f
+
+
+def bound_interpolation(k, limits):
+    """This function takes a matrix k and makes sure that all of its values are bounded between the input limits"""
+
+    # find undershooting indexes, caused by the fact that np.min(f_signal) < np.min(cnt_hz_s)
+    idx_under = np.where(k < limits[0])
+    k[idx_under] = limits[0]                                # bound the undershooting value with the lower limit
+
+    # find overshooting indexes, caused by the fact that np.max(f_signal) > np.max(cnt_hz_s)
+    idx_over = np.where(k > limits[1])
+    k[idx_over] = limits[1]                                 # bound the overshooting value with the upper limit
+
+    return k
 
 
 def buffer(signal, framesize, hopsize):
@@ -287,7 +318,7 @@ def mel2f(mel):
     return 700.0 * ((10.0 ** (np.asarray(mel) / 2595)) - 1)
 
 
-def plot_spectrum(S, f, t, title=None, max_db=None, freq_scale='Hz'):
+def plot_spectrum(S, f, t, title=None, max_db=None, freq_scale='Hz', interp='antialiased'):
     """This function plots the spectrum of the computed STFT, as an image"""
 
     data = amp2db(abs(S))
@@ -295,7 +326,8 @@ def plot_spectrum(S, f, t, title=None, max_db=None, freq_scale='Hz'):
     if freq_scale != 'Hz':
         f = f2scale(f, freq_scale)
 
-    plt.imshow(data, extent=[t[0], t[-1], f[0], f[-1]], aspect='auto', origin='lower', vmin=-48, vmax=max_db)
+    plt.imshow(data, extent=[t[0], t[-1], f[0], f[-1]], aspect='auto', origin='lower',
+               vmin=-48, vmax=max_db, interpolation=interp)
     plt.xlabel('time (s)')
     plt.ylabel('frequency (' + freq_scale + ')')
     plt.colorbar()
@@ -305,6 +337,40 @@ def plot_spectrum(S, f, t, title=None, max_db=None, freq_scale='Hz'):
         plt.title(title)
 
     plt.draw()
+
+
+def real_time_plot(S, f, t):
+    """This function plots in real time the shape of the input spectrum S over time"""
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    data = amp2db(abs(S))
+    min_value = np.min(data)
+    max_value = np.max(data)
+    n_frames = len(t)
+
+    mean_time = 0.08443909635146458                     # mean execution time for one plot
+    tot_plots = t[-1] / mean_time                       # number of plots in the total time
+    step = int(n_frames // tot_plots)                   # step to plot in real time
+
+    times = []
+    strt = time.time()
+
+    for i in range(0, n_frames, step):
+        a = time.time()
+        ax.plot(f, data[:, i])
+        plt.xlabel('frequency (Hz)')
+        plt.ylabel('Magnitude (dB)')
+        plt.title('Real time spectrum')
+        ax.set_ylim(min_value, max_value)
+        fig.canvas.draw()
+        # time.sleep(dt)
+        ax.clear()
+        times.append(time.time() - a)
+    print('mean execution time: ' + str(np.mean(times)) + ' s')
+    print('total execution time: ' + str(time.time() - strt) + ' s')
+    fig.show()
 
 
 def rms_energy(signal):
@@ -381,13 +447,7 @@ def set_snr_matrix(signal, noise, snr_target, limits=None):
     snr_real = np.abs(signal) / np.abs(noise)       # this is the same of the snr, since it is done element by element
 
     idx = np.where(snr_real == 0)                   # check if any value is 0
-    num_zero = len(idx[0])                          # number of zero elements
-
-    if num_zero > 0:                                # if any
-        for i in range(num_zero):                   # for each zero value
-            r = idx[0][i]                           # row index of the current zero value
-            c = idx[1][i]                           # column index of the current zero value
-            snr_real[r][c] += eps                   # add epsilon to avoid zero divisions
+    snr_real[idx] += eps                            # add epsilon to avoid zero divisions
 
     k = snr_target / snr_real                       # compute the ratio between the target and the real snr
 
@@ -396,20 +456,10 @@ def set_snr_matrix(signal, noise, snr_target, limits=None):
         max_value = limits[1]                       # set maximum modulation value
 
         idx_min = np.where(k < min_value)           # check if any value is less than the minimum limit
-        num_min = len(idx_min[0])                   # number of elements less than the minimum limit
-        if num_min > 0:                             # if any
-            for i in range(num_min):                # for each of these values
-                r = idx_min[0][i]                   # row index of the current value
-                c = idx_min[1][i]                   # column index of the current value
-                k[r][c] = min_value                 # set the current value to minumum value
+        k[idx_min] = min_value                      # set the minumum value for these ones
 
         idx_max = np.where(k > max_value)           # check if any value is greater than the maximum limit
-        num_max = len(idx_max[0])                   # number of elements greater than the maximum limit
-        if num_max > 0:                             # if any
-            for i in range(num_max):                # for each of these values
-                r = idx_max[0][i]                   # row index of the current value
-                c = idx_max[1][i]                   # column index of the current value
-                k[r][c] = max_value                 # set the current value to the maximum value
+        k[idx_max] = max_value                      # set the maximum value for these ones
 
     return k
 

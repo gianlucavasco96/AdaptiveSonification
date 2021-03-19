@@ -2,6 +2,7 @@ from functions import *
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.interpolate import pchip_interpolate
+from scipy.io.wavfile import write
 
 # ambience sound path: Urban Sound dataset has been used to simulate enviromental sounds
 noise_path = 'D:/Gianluca/Università/Magistrale/Dataset/UrbanSound/data/'
@@ -13,8 +14,8 @@ sound_path = 'D:/Gianluca/Università/Magistrale/Tesi/'
 sound_name = 'piano.wav'
 
 # audio reading
-amb_sound, fs = audioread(noise_path + sound_type + '/' + noise_name)
-sonification, sr = audioread(sound_path + sound_name)
+sonification, fs = audioread(sound_path + sound_name)
+amb_sound, fs = audioread(noise_path + sound_type + '/' + noise_name, fs=fs)
 
 # setup parameters
 n_bit = 16                                      # number of quantization bits
@@ -85,13 +86,13 @@ cnt_hz_n = scale2f(cnt_noise, scale)
 # computation of modulation factors
 snr_target = 2                                                      # desired SNR
 n_bands, n_frames = signal_bands.shape                              # number of bands and number of frames
-limits = [0.9, 4.0]                                                 # limits for the modulation factor
+limits = [0.2, 4.0]                                                 # limits for the modulation factor
 
 k = set_snr_matrix(signal_bands, noise_bands, snr_target, limits)   # compute modulation factor matrix
+k, cnt_hz_s = add_limit_bands(k, cnt_hz_s, f_signal)    # add the lower and the upper bands to avoid under/overshooting
 
 # interpolation
-new_f = np.linspace(cnt_hz_s[0], cnt_hz_s[-1], len(f_signal))
-k_interp = pchip_interpolate(cnt_hz_s, k, new_f)
+k_interp = pchip_interpolate(cnt_hz_s, k, f_signal)
 
 # signal spectrum equalization
 Signal_eq = Signal * k_interp
@@ -115,5 +116,10 @@ signal_eq = unbuffer(signal_eq, hop_size, w=win**2, ln=sonification.size)
 
 # playback the equalized audio signal plus the noisy signal
 noisy_signal = signal_eq + amb_sound
-sound(noisy_signal, sr)
+sound(noisy_signal, fs)
 
+# write the audio file
+# path = "D:/Gianluca/Università/Magistrale/Tesi/solo enfatizzazione/audio/"
+# write(path + "piano.wav", fs, (max_sample * sonification).astype(np.int16))
+# write(path + "piano_eq.wav", fs, (max_sample * signal_eq).astype(np.int16))
+# write(path + "both_signals.wav", fs, (max_sample * noisy_signal).astype(np.int16))
