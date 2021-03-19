@@ -87,12 +87,17 @@ cnt_hz_n = scale2f(cnt_noise, scale)
 snr_target = 2                                                      # desired SNR
 n_bands, n_frames = signal_bands.shape                              # number of bands and number of frames
 limits = [0.2, 4.0]                                                 # limits for the modulation factor
+min_thres = db2amp(-30)                                             # minimum threshold not to emphasize irrelevant freq
 
-k = set_snr_matrix(signal_bands, noise_bands, snr_target, limits)   # compute modulation factor matrix
+k = set_snr_matrix(signal_bands, noise_bands, snr_target, limits, min_thres)   # compute modulation factor matrix
 k, cnt_hz_s = add_limit_bands(k, cnt_hz_s, f_signal)    # add the lower and the upper bands to avoid under/overshooting
 
 # interpolation
 k_interp = pchip_interpolate(cnt_hz_s, k, f_signal)
+
+# interpolated equalization mask plot
+plot_spectrum(k_interp, f_signal, t_signal, title='equalization mask', min_db=None)
+plt.show()
 
 # signal spectrum equalization
 Signal_eq = Signal * k_interp

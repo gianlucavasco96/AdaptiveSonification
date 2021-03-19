@@ -318,7 +318,7 @@ def mel2f(mel):
     return 700.0 * ((10.0 ** (np.asarray(mel) / 2595)) - 1)
 
 
-def plot_spectrum(S, f, t, title=None, max_db=None, freq_scale='Hz', interp='antialiased'):
+def plot_spectrum(S, f, t, title=None, min_db=-48, max_db=None, freq_scale='Hz', interp='antialiased'):
     """This function plots the spectrum of the computed STFT, as an image"""
 
     data = amp2db(abs(S))
@@ -327,7 +327,7 @@ def plot_spectrum(S, f, t, title=None, max_db=None, freq_scale='Hz', interp='ant
         f = f2scale(f, freq_scale)
 
     plt.imshow(data, extent=[t[0], t[-1], f[0], f[-1]], aspect='auto', origin='lower',
-               vmin=-48, vmax=max_db, interpolation=interp)
+               vmin=min_db, vmax=max_db, interpolation=interp)
     plt.xlabel('time (s)')
     plt.ylabel('frequency (' + freq_scale + ')')
     plt.colorbar()
@@ -440,7 +440,7 @@ def set_snr(signal, noise, snr_target, limits=None, onlyk=False):
         return mod_signal
 
 
-def set_snr_matrix(signal, noise, snr_target, limits=None):
+def set_snr_matrix(signal, noise, snr_target, limits=None, min_tresh=None):
     """This function takes in input a clear signal and a noise signal (this time they are matrices) and modifies
     the clear one so that the signal to noise ratio is the one specified by the 3rd parameter"""
 
@@ -460,6 +460,10 @@ def set_snr_matrix(signal, noise, snr_target, limits=None):
 
         idx_max = np.where(k > max_value)           # check if any value is greater than the maximum limit
         k[idx_max] = max_value                      # set the maximum value for these ones
+
+    if min_tresh is not None:
+        idx_thres = np.where(signal < min_tresh)    # check if any signal value is less than the minimum threshold
+        k[idx_thres] = 1.0                          # assign 1.0 to the corresponding values in k not to equalize them
 
     return k
 
