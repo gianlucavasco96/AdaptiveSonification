@@ -6,8 +6,8 @@ from scipy.io.wavfile import write
 
 # ambience sound path: Urban Sound dataset has been used to simulate enviromental sounds
 noise_path = 'D:/Gianluca/Università/Magistrale/Dataset/UrbanSound/data/'
-sound_type = 'car_horn'
-noise_name = '44278.wav'
+sound_type = 'drilling'
+noise_name = '71529.wav'
 
 # sonification sound: piano samples, C major scale
 sound_path = 'D:/Gianluca/Università/Magistrale/Tesi/'
@@ -124,7 +124,7 @@ noisy_signal = signal_eq + amb_sound
 sound(noisy_signal, fs)
 
 # write the audio file
-# path = "D:/Gianluca/Università/Magistrale/Tesi/solo enfatizzazione/audio/"
+# path = "D:/Gianluca/Università/Magistrale/Tesi/test/drilling/solo attenuazione/audio/"
 # write(path + "piano.wav", fs, (max_sample * sonification).astype(np.int16))
 # write(path + "piano_eq.wav", fs, (max_sample * signal_eq).astype(np.int16))
 # write(path + "both_signals.wav", fs, (max_sample * noisy_signal).astype(np.int16))

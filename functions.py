@@ -494,7 +494,10 @@ def stft(x, hopsize=None, fs=None):
 def sound(signal, fs):
     """This function plays the input signal vector at the given sampling frequency"""
 
-    signal = signal / max(abs(signal))        # normalization
+    max_sig = np.max(np.abs(signal))            # max absolute value in the signal to play
+
+    if max_sig > 1:
+        signal /= max_sig                       # normalization to avoid clipping
 
     sd.play(signal, fs)
     sd.wait()
