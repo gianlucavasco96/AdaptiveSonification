@@ -223,7 +223,7 @@ def fade(x, leng, typ='inout', shape=2):
     return x
 
 
-def getFilterBank(F, nband=18, scale='mel', wfunc=np.bartlett):
+def getFilterBank(F, nband=12, scale='mel', wfunc=np.bartlett):
     """This function returns a matrix of overlapping masks of size bw*2+1 and center freq. array
     Masks have wfunc shape and are equally spaced in scale-space
     scale can be: 'mel', 'bark', 'st', 'erb' """
@@ -247,6 +247,32 @@ def getFilterBank(F, nband=18, scale='mel', wfunc=np.bartlett):
         ih = findx(F, hig[b])
         fbank[il:ih, b] = wfunc(ih - il)
     return fbank, cnt
+
+
+def get_mask(bands, start, stop, type='linear'):
+    """This function computes the corrective mask to apply to the band splitted noise matrix, in order not to equalize
+    the signal (in next steps) where it contains silence"""
+
+    r, c = bands.shape                                  # shape of band splitted input signal
+    mask = np.zeros((r, c))                             # initialize mask matrix with 0s
+    start = db2amp(start)                               # convert start value into amplitude
+    stop = db2amp(stop)                                 # convert stop value into amplitude
+
+    idx_between = np.where((bands >= start) & (bands <= stop))  # (a) indexes where bands is between start and stop
+    idx_1 = np.where(bands > stop)                      # (b) indexes where bands is more than stop
+
+    if type == 'linear':
+        m = 1 / (stop - start)                           # slope of the straght line
+        q = - m * start                                  # stoichiometric coefficient
+        mask[idx_between] = m * bands[idx_between] + q   # set linear slope for (a)
+
+    if type == 'cos':
+        a = (bands[idx_between] - bands[idx_between].min()) / bands[idx_between].max()
+        mask[idx_between] = 0.5 * (-np.cos(a * np.pi) + 1)
+
+    mask[idx_1] = 1                                     # set 1 for (b)
+
+    return mask
 
 
 def get_modulation(signal, noise, gain, limits=None):
@@ -440,16 +466,15 @@ def set_snr(signal, noise, snr_target, limits=None, onlyk=False):
         return mod_signal
 
 
-def set_snr_matrix(signal, noise, snr_target, limits=None, min_tresh=None):
+def set_snr_matrix(signal, noise, snr_target, limits=None):
     """This function takes in input a clear signal and a noise signal (this time they are matrices) and modifies
     the clear one so that the signal to noise ratio is the one specified by the 3rd parameter"""
 
-    snr_real = np.abs(signal) / np.abs(noise)       # this is the same of the snr, since it is done element by element
+    # correction mask: it serves to ensure that noise is lower than signal, where signal itself is very low
+    noise_mask = get_mask(signal, start=-35, stop=-25, type='linear')
+    noise = noise_mask * noise
 
-    idx = np.where(snr_real == 0)                   # check if any value is 0
-    snr_real[idx] += eps                            # add epsilon to avoid zero divisions
-
-    k = snr_target / snr_real                       # compute the ratio between the target and the real snr
+    k = snr_target * np.abs(noise) / (np.abs(signal) + eps)     # compute the ratio between the snr target and the real
 
     if limits is not None:
         min_value = limits[0]                       # set minimum modulation value
@@ -460,10 +485,6 @@ def set_snr_matrix(signal, noise, snr_target, limits=None, min_tresh=None):
 
         idx_max = np.where(k > max_value)           # check if any value is greater than the maximum limit
         k[idx_max] = max_value                      # set the maximum value for these ones
-
-    if min_tresh is not None:
-        idx_thres = np.where(signal < min_tresh)    # check if any signal value is less than the minimum threshold
-        k[idx_thres] = 1.0                          # assign 1.0 to the corresponding values in k not to equalize them
 
     return k
 

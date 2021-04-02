@@ -31,13 +31,13 @@ sonification = sonification / max_sample
 # signals adjusting: they must have the same length
 sonification, amb_sound = set_same_length(sonification, amb_sound)
 
-# set the same loudness, with rms
+# set the same rms
 sonification = sonification * rms_energy(amb_sound) / rms_energy(sonification)
 
 # Masking adaptivity
 
 # setup parameters for STFT
-frame_size = 1024
+frame_size = 512
 hop_size = frame_size // 4
 win = np.hanning(frame_size)
 
@@ -87,9 +87,8 @@ cnt_hz_n = scale2f(cnt_noise, scale)
 snr_target = 2                                                      # desired SNR
 n_bands, n_frames = signal_bands.shape                              # number of bands and number of frames
 limits = [0.2, 4.0]                                                 # limits for the modulation factor
-min_thres = db2amp(-30)                                             # minimum threshold not to emphasize irrelevant freq
 
-k = set_snr_matrix(signal_bands, noise_bands, snr_target, limits, min_thres)   # compute modulation factor matrix
+k = set_snr_matrix(signal_bands, noise_bands, snr_target, limits)   # compute modulation factor matrix
 k, cnt_hz_s = add_limit_bands(k, cnt_hz_s, f_signal)    # add the lower and the upper bands to avoid under/overshooting
 
 # interpolation
