@@ -39,7 +39,7 @@ for i in range(int(n_samples/w_size)):          # for each window
     win_signal = tone[start:stop]               # consider the windowed signal
     win_noise = noise[start:stop]               # consider the windowed noise
 
-    adj_signal = set_snr(win_signal, win_noise, fixed_snr, limits)      # adjust windowed signal amplitude
+    adj_signal = set_snr_time(win_signal, win_noise, fixed_snr, limits)  # adjust windowed signal amplitude
     adj_tone = np.append(adj_tone, adj_signal)                  # append it to the new sine tone array
 
 noisy_signal = adj_tone + noise                 # sum the new adjusted sine tone and the noise signal

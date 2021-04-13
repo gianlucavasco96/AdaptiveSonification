@@ -12,17 +12,24 @@ eps = 10e-9                                         # dummy variable to avoid di
 
 
 def add_limit_bands(k, cnt, f):
-    """This function adds to matrix k two rows, one at the top and one at the bottom, such that k first and last
-    frequency values match f vector ones"""
+    """This function adds to (matrix) k two rows or elements, one at the top and one at the bottom, such that k first
+    and last frequency values match f vector ones"""
 
-    first_row = k[0, :]                             # get the first row of k
-    last_row = k[-1, :]                             # get the last row of k
+    if k.ndim == 1:
+        first_el = k[0]                                 # get the first element of k
+        last_el = k[-1]                                 # get the last element of k
 
-    k = np.vstack((first_row, k))                   # append first duplicate row of k in 1st position
-    k = np.vstack((k, last_row))                    # append last duplicate row of k in last position
+        k = np.hstack((first_el, k))                    # append the duplicate of the first element of k in 1st position
+        k = np.hstack((k, last_el))                     # append the duplicate of the last element of k in last position
+    else:
+        first_row = k[0, :]                             # get the first row of k
+        last_row = k[-1, :]                             # get the last row of k
 
-    cnt = np.hstack((f[0], cnt))                    # append first freq value to center freq vector
-    cnt = np.hstack((cnt, f[-1]))                   # append last freq value to center freq vector
+        k = np.vstack((first_row, k))                   # append the duplicate of the first row of k in 1st position
+        k = np.vstack((k, last_row))                    # append the duplicate of the last row of k in last position
+
+    cnt = np.hstack((f[0], cnt))                        # append first freq value to center freq vector
+    cnt = np.hstack((cnt, f[-1]))                       # append last freq value to center freq vector
 
     return k, cnt
 
@@ -42,7 +49,10 @@ def applyFilterBank(psd, fbank):
 
     fltc = lambda ps, fb: [np.sum(ps * fb[:, n]) for n in range(fb.shape[1])]
 
-    return np.asarray([fltc(psd[:, c], fbank) for c in range(psd.shape[1])]).T
+    if psd.ndim == 1:
+        return np.asarray(fltc(psd, fbank)).T
+    else:
+        return np.asarray([fltc(psd[:, c], fbank) for c in range(psd.shape[1])]).T
 
 
 def audioread(file_path, fs=None):
@@ -151,6 +161,14 @@ def envelope(x, method='rms', param=512):
     return m(x, param)
 
 
+def erb(f):
+    """This function computes the equivalent rectangular bandwidth, approximating the bandwidths of the filters in human
+     hearing, using the unrealistic but convenient simplification of modeling the filters as rectangular band-pass
+     filters"""
+
+    return 24.7 * (0.00437 * f + 1)
+
+
 def erb2f(erb):
     """This function converts ERB scale values into frequency values"""
 
@@ -223,6 +241,31 @@ def fade(x, leng, typ='inout', shape=2):
     return x
 
 
+def get_bandwidth(freqs):
+    """This function computes the bandwidth of the input center frequency
+    If an array is passed, the function returns the array of corresponding bandwidths"""
+
+    if isinstance(freqs, np.ndarray):                   # if freqs is an array
+        bw = np.zeros(len(freqs))                       # create the empty bandwidths array
+        start = 0                                       # set the start index to 0
+        for i in range(len(freqs)):                     # for each value in freqs
+            bw[i] = (freqs[i] - start) * 2              # the cur bdwth is twice the diff btw cur freq and start index
+            start += bw[i]                              # update start index
+
+        return bw
+    else:                                               # if freqs is a scalar
+        return 2 * freqs                                # bandwidth is twice its value
+
+
+def get_duration(path):
+    """This function returns the duration in seconds of the input audio file"""
+
+    audio, fs = audioread(path)
+    duration = len(audio) / fs
+
+    return duration
+
+
 def getFilterBank(F, nband=12, scale='mel', wfunc=np.bartlett):
     """This function returns a matrix of overlapping masks of size bw*2+1 and center freq. array
     Masks have wfunc shape and are equally spaced in scale-space
@@ -253,8 +296,12 @@ def get_mask(bands, start, stop, type='linear'):
     """This function computes the corrective mask to apply to the band splitted noise matrix, in order not to equalize
     the signal (in next steps) where it contains silence"""
 
-    r, c = bands.shape                                  # shape of band splitted input signal
-    mask = np.zeros((r, c))                             # initialize mask matrix with 0s
+    if bands.ndim == 1:
+        r = len(bands)                                  # length of band splitted input signal
+        mask = np.zeros(r)                              # initialize mask vector with 0s
+    else:
+        r, c = bands.shape                              # shape of band splitted input signal
+        mask = np.zeros((r, c))                         # initialize mask matrix with 0s
     start = db2amp(start)                               # convert start value into amplitude
     stop = db2amp(stop)                                 # convert stop value into amplitude
 
@@ -438,9 +485,34 @@ def set_same_length(signal, noise):
     return signal, noise
 
 
-def set_snr(signal, noise, snr_target, limits=None, onlyk=False):
+def set_snr(signal, noise, snr_target, limits=None):
+    """This function takes in input a clear signal and a noise signal (matrices) and modifies
+    the clear one so that the signal to noise ratio is the one specified by the 3rd parameter.
+    This function works in frequency domain"""
+
+    # correction mask: it ensures that noise is lower than signal, where signal itself is very low
+    noise_mask = get_mask(signal, start=-35, stop=-25, type='linear')
+    noise = noise_mask * noise
+
+    k = snr_target * np.abs(noise) / (np.abs(signal) + eps)     # compute the ratio between the snr target and the real
+
+    if limits is not None:
+        min_value = limits[0]                       # set minimum modulation value
+        max_value = limits[1]                       # set maximum modulation value
+
+        idx_min = np.where(k < min_value)           # check if any value is less than the minimum limit
+        k[idx_min] = min_value                      # set the minumum value for these ones
+
+        idx_max = np.where(k > max_value)           # check if any value is greater than the maximum limit
+        k[idx_max] = max_value                      # set the maximum value for these ones
+
+    return k
+
+
+def set_snr_time(signal, noise, snr_target, limits=None, onlyk=False):
     """This function takes in input a clear signal and a noise signal and modifies the clear one so that the signal
-    to noise ratio is the one specified by the 3rd parameter"""
+    to noise ratio is the one specified by the 3rd parameter.
+    This function works in time domain"""
 
     snr_real = snr(signal, noise)                   # compute real signal to noise ratio
 
@@ -464,29 +536,6 @@ def set_snr(signal, noise, snr_target, limits=None, onlyk=False):
         mod_signal = signal * k                      # apply the corrective factor to the clear signal
         print('New SNR is ' + str(snr(mod_signal, noise)) + ' dB')
         return mod_signal
-
-
-def set_snr_matrix(signal, noise, snr_target, limits=None):
-    """This function takes in input a clear signal and a noise signal (this time they are matrices) and modifies
-    the clear one so that the signal to noise ratio is the one specified by the 3rd parameter"""
-
-    # correction mask: it serves to ensure that noise is lower than signal, where signal itself is very low
-    noise_mask = get_mask(signal, start=-35, stop=-25, type='linear')
-    noise = noise_mask * noise
-
-    k = snr_target * np.abs(noise) / (np.abs(signal) + eps)     # compute the ratio between the snr target and the real
-
-    if limits is not None:
-        min_value = limits[0]                       # set minimum modulation value
-        max_value = limits[1]                       # set maximum modulation value
-
-        idx_min = np.where(k < min_value)           # check if any value is less than the minimum limit
-        k[idx_min] = min_value                      # set the minumum value for these ones
-
-        idx_max = np.where(k > max_value)           # check if any value is greater than the maximum limit
-        k[idx_max] = max_value                      # set the maximum value for these ones
-
-    return k
 
 
 def snr(x, y):

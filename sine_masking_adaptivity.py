@@ -81,7 +81,7 @@ snr_target = 5                                                      # desired SN
 n_bands, n_frames = signal_bands.shape                              # number of bands and number of frames
 limits = [0.9, 4.0]                                                 # limits for the modulation factor
 
-k = set_snr_matrix(signal_bands, noise_bands, snr_target, limits)   # compute modulation factor matrix
+k = set_snr(signal_bands, noise_bands, snr_target, limits)  # compute modulation factor matrix
 
 # interpolation
 k_interp = pchip_interpolate(cnt_hz_s, k, f_signal)
