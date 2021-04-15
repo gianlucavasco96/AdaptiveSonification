@@ -6,47 +6,44 @@ from functions import *
 # initialize pyaudio
 p = pyaudio.PyAudio()
 
+sig = np.array([])
+
 # callback function
 def callback(in_data, frame_count, time_info, flag):
-    global start, stop, buf_sig_cur, buf_sig_next, buf_noi_cur, buf_sig_next
+    global start, stop, buf_sound, buf_noise, sig
 
     # sound
-    # sound = sonification[start:stop]
-
-    # sound
-    audio_data = sound_file.readframes(FRAMESIZE)
-    sound = np.frombuffer(audio_data, dtype=np.int16)
-    sound = sound.astype(np.float64)
+    audio_data = sound_file.readframes(overlap)
+    sound_audio = np.frombuffer(audio_data, dtype=np.int16)
+    sound = sound_audio.astype(np.float64)
 
     # noise
     noise = np.frombuffer(in_data, dtype=np.int16)
     noise = noise.astype(np.float64)
 
     # overlapping buffers
-    buf_sig_cur[:] = buf_sig_next[:]                            # set the next buffer as the current buffer
-    buf_sig_cur[overlap:] = sound[:overlap]                     # the second half of buffer is the first half of frame
-    buf_sig_next[:overlap] = sound[overlap:]                    # the first half of buffer is the second half of frame
+    buf_sound = shift(buf_sound, overlap)
+    buf_sound[-overlap:] = sound[:]
 
-    buf_noi_cur[:] = buf_noi_next[:]                            # set the next buffer as the current buffer
-    buf_noi_cur[overlap:] = noise[:overlap]                     # the second half of buffer is the first half of frame
-    buf_noi_next[:overlap] = noise[overlap:]                    # the first half of buffer is the second half of frame
+    buf_noise = shift(buf_noise, overlap)
+    buf_noise[-overlap:] = noise[:]
 
     # set the same rms
-    # buf_sig_cur = buf_noi_cur * rms_energy(buf_noi_cur) / rms_energy(buf_sig_cur)
+    # buf_sound = buf_sound * rms_energy(buf_noise) / rms_energy(buf_sound)
 
     # Hanning windowing
-    win = np.hanning(FRAMESIZE)
-    win_sound = buf_sig_cur * win[:]
-    win_noise = buf_noi_cur * win[:]
+    # win = np.hanning(FRAMESIZE)
+    # win_sound = buf_sound * win[:]
+    # win_noise = buf_noise * win[:]
 
     # FFT --> frequency domain
-    Sound = np.fft.rfft(win_sound, FRAMESIZE)
-    Noise = np.fft.rfft(win_noise, FRAMESIZE)
+    Sound = np.fft.rfft(buf_sound, FRAMESIZE)
+    Noise = np.fft.rfft(buf_noise, FRAMESIZE)
     f = np.fft.rfftfreq(FRAMESIZE, 1 / RATE)
 
     # filter banks and central frequencies
     scale = 'erb'                                                   # frequency scale
-    n_bands = 21
+    n_bands = 15
     fb, cnt_scale = getFilterBank(f, scale=scale, nband=n_bands)    # filter bank for signal
 
     # spectral filtering
@@ -73,14 +70,14 @@ def callback(in_data, frame_count, time_info, flag):
     signal_eq = np.fft.irfft(Signal_eq, FRAMESIZE)
 
     # equalized signal is windowed again with hanning window, to remove modulation artifacts
-    signal_eq = signal_eq * win[:]
+    # signal_eq = signal_eq * win[:]
 
     # convert back to int16
     y = signal_eq.astype(np.int16)
 
     # update start and stop indexes
-    start += FRAMESIZE
-    stop += FRAMESIZE
+    start += overlap
+    stop += overlap
 
     return y.tobytes(), pyaudio.paContinue
 
@@ -90,7 +87,6 @@ sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/piano_mono.wav'    
 
 # Open the sound file
 sound_file = wave.open(sonification_path, 'rb')
-# sonification, _ = audioread(sonification_path)
 
 # audio settings
 FRAMESIZE = 1024
@@ -99,22 +95,20 @@ CHANNELS = sound_file.getnchannels()
 RATE = sound_file.getframerate()
 
 # overlapping buffers
-buf_sig_cur = np.zeros(FRAMESIZE)                                           # current sonification buffer
-buf_sig_next = np.zeros(FRAMESIZE)                                          # next sonification buffer
-buf_noi_cur = np.zeros(FRAMESIZE)                                           # current noise buffer
-buf_noi_next = np.zeros(FRAMESIZE)                                          # next noise buffer
-n_overlap = 2                                                               # number of overlapping frames
-overlap = FRAMESIZE // n_overlap                                            # overlapping samples
+buf_sound = np.zeros(FRAMESIZE)                             # sonification buffer
+buf_noise = np.zeros(FRAMESIZE)                             # noise buffer
+n_overlap = 4                                               # number of overlapping frames
+overlap = FRAMESIZE // n_overlap                            # overlapping samples
 
 # start and stop indexes for sonification buffer
 start = 0
-stop = FRAMESIZE
+stop = overlap
 
 # Open a stream object to write the WAV file to
 stream = p.open(format=FORMAT,
                 channels=CHANNELS,
                 rate=RATE,
-                frames_per_buffer=FRAMESIZE,
+                frames_per_buffer=overlap,
                 input=True,
                 output=True,
                 stream_callback=callback)

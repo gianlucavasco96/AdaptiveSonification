@@ -37,16 +37,16 @@ sonification = sonification * rms_energy(amb_sound) / rms_energy(sonification)
 # Masking adaptivity
 
 # setup parameters for STFT
-frame_size = 512
+frame_size = 1024
 hop_size = frame_size // 4
 win = np.hanning(frame_size)
 
 # signal splitting into columns
-buf_signal = buffer(sonification, frame_size, hop_size)
+buf_sound = buffer(sonification, frame_size, hop_size)
 buf_noise = buffer(amb_sound, frame_size, hop_size)
 
 # signal windowing, hanning window
-win_signal = buf_signal * win[:, None]
+win_signal = buf_sound * win[:, None]
 win_noise = buf_noise * win[:, None]
 
 # Short Time Fourier Trasform --> frequency domain
@@ -54,9 +54,10 @@ Signal, f_signal, t_signal = stft(win_signal, hop_size, fs)
 Noise, f_noise, t_noise = stft(win_noise, hop_size, fs)
 
 # filter banks and central frequencies
-scale = 'erb'                                                         # frequency scale
-fb_signal, cnt_signal = getFilterBank(f_signal, scale=scale)          # filter bank for signal
-fb_noise, cnt_noise = getFilterBank(f_noise, scale=scale)             # filter bank for noise
+scale = 'erb'                                                                       # frequency scale
+n_bands = 21
+fb_signal, cnt_signal = getFilterBank(f_signal, scale=scale, nband=n_bands)         # filter bank for signal
+fb_noise, cnt_noise = getFilterBank(f_noise, scale=scale, nband=n_bands)            # filter bank for noise
 
 # spectral filtering
 signal_bands = applyFilterBank(abs(Signal), fb_signal)

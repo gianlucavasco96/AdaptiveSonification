@@ -1,35 +1,71 @@
-from pyo import *
+import pyaudio
+import wave
 from functions import *
 
-s = Server().boot()
+# initialize pyaudio
+p = pyaudio.PyAudio()
+
+def callback(in_data, frame_count, time_info, flag):
+    # sound
+    audio_data = sound_file.readframes(CHUNK)
+    sound = np.frombuffer(audio_data, dtype=np.int16)
+    sound = sound.astype(np.float64)
+
+    # noise
+    noise = np.frombuffer(in_data, dtype=np.int16)
+    noise = noise.astype(np.float64)
+
+    # volume adaptivity: SNR is kept constant inside a specified sound intensity range,
+    # outside of witch the signal volume is kept constant
+
+    gain = 5  # gain factor: SNR target (amplitude value, not dB)
+    limits = [0.2, 1.0]  # limits for the modulation factor
+
+    # get modulation term
+    modulation = get_modulation(sound, noise, gain, limits)
+
+    # apply the modulation factor to the signal
+    sound = sound * modulation
+
+    y = sound.astype(np.int16)
+
+    return y.tobytes(), pyaudio.paContinue
+
 
 # sonification sound: piano samples, C major scale
-sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/piano.wav'
-dur = get_duration(sonification_path)
+sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/piano_mono.wav'     # audio must be mono
 
-sf = SfPlayer(sonification_path)                                # soundfile player
+# Open the sound file
+sound_file = wave.open(sonification_path, 'rb')
 
-# Recorded noise
-t = NewTable(length=dur, chnls=2)                               # create an empty table ready for recording
-inp = Input([0, 1])                                             # retrieves the stereo input
-rec = TableRec(inp, table=t, fadetime=0.05).play()              # table recorder
-osc = Osc(table=t, freq=t.getRate())                            # reads the content of the table for the spec. duration
+# audio settings
+CHUNK = 1024
+FORMAT = p.get_format_from_width(sound_file.getsampwidth())
+CHANNELS = sound_file.getnchannels()
+RATE = sound_file.getframerate()
 
-# Follow the amplitude envelope of the input sound
-env_sound = Follower(sf)
-env_noise = Follower(osc)
+# start and stop indexes for sonification buffer
+start = 0
+stop = CHUNK
 
-# modulation factor
-# TODO: capire perché il fattore di modulazione non si modifica sullo slider
-gain = Sig(5.0)
-# gain.ctrl(map_list=[SLMap(0.01, 10.0, "lin", "gain", 5.0)], title='gain control')
-sf.mul = gain * env_noise / env_sound
+# Open a stream object to write the WAV file to
+stream = p.open(format=FORMAT,
+                channels=CHANNELS,
+                rate=RATE,
+                frames_per_buffer=CHUNK,
+                input=True,
+                output=True,
+                stream_callback=callback)
 
-# playback
-sf.out()
-osc.out(dur=dur)
+# start stream
+stream.start_stream()
 
-# Display the waveform
-sc = Scope([sf, osc])
+# Play the sound by writing the audio data to the stream
+while stream.is_active():
+    time.sleep(get_duration(sonification_path))
+    stream.stop_stream()
 
-s.gui(locals())
+# Close stream and terminate pyaudio
+stream.close()
+
+p.terminate()

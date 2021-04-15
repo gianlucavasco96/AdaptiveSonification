@@ -334,11 +334,11 @@ def get_modulation(signal, noise, gain, limits=None):
         min_value = limits[0]                       # set minimum modulation value
         max_value = limits[1]                       # set maximum modulation value
 
-        for i in range(len(modulation)):
-            if modulation[i] < min_value:           # if modulation factor is too small
-                modulation[i] = min_value           # limit its value to minimum value, in order not to silence signal
-            if modulation[i] > max_value:           # if modulation factor is too big
-                modulation[i] = max_value           # limit its value to maximum value, in order to avoid clipping
+        idx_under = np.where(modulation < min_value)    # find indexes of values under the minimum threshold
+        idx_over = np.where(modulation > max_value)     # find indexes of values under the maximum threshold
+
+        modulation[idx_under] = min_value               # exchange under threshold values with the minimum
+        modulation[idx_over] = max_value                # exchange over threshold values with the maximum
 
     return modulation
 
@@ -546,6 +546,16 @@ def snr(x, y):
     rms_y = rms_y if rms_y != 0 else rms_y + eps
 
     return rms_x / rms_y
+
+
+def shift(array, n):
+    """This function left shifts the input array of n position."""
+    """Example:
+        array: [0, 1, 2, 3]
+        n: 1
+        --> return [1, 2, 3, 0]"""
+
+    return np.hstack((array[n:], array[:n]))
 
 
 def stft(x, hopsize=None, fs=None):

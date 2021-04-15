@@ -35,11 +35,11 @@ hop_size = frame_size // 4
 win = np.hanning(frame_size)
 
 # signal splitting into columns
-buf_signal = buffer(tone, frame_size, hop_size)
+buf_sound = buffer(tone, frame_size, hop_size)
 buf_noise = buffer(amb_sound, frame_size, hop_size)
 
 # signal windowing, hanning window
-win_signal = buf_signal * win[:, None]
+win_signal = buf_sound * win[:, None]
 win_noise = buf_noise * win[:, None]
 
 # Short Time Fourier Trasform --> frequency domain
