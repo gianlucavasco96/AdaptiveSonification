@@ -325,14 +325,14 @@ def get_mask(bands, start, stop, type='linear'):
 def get_modulation(signal, noise, gain, limits=None):
     """This function computes the modulation factor that has to be applied to the sonification signal"""
 
-    env_sig = envelope(signal, 'rms')               # get the mobile RMS envelope of signal
-    env_noise = envelope(noise, 'rms')              # get the mobile RMS envelope of noise
+    env_sig = envelope(signal, 'rms')                   # get the mobile RMS envelope of signal
+    env_noise = envelope(noise, 'rms')                  # get the mobile RMS envelope of noise
 
-    modulation = gain * env_noise / env_sig         # modulation factor: difference in dB is division in amplitude
+    modulation = gain * env_noise / (env_sig + eps)     # modulation factor: difference in dB is division in amplitude
 
     if limits is not None:
-        min_value = limits[0]                       # set minimum modulation value
-        max_value = limits[1]                       # set maximum modulation value
+        min_value = limits[0]                           # set minimum modulation value
+        max_value = limits[1]                           # set maximum modulation value
 
         idx_under = np.where(modulation < min_value)    # find indexes of values under the minimum threshold
         idx_over = np.where(modulation > max_value)     # find indexes of values under the maximum threshold

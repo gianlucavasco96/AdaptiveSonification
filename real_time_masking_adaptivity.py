@@ -1,10 +1,22 @@
 import pyaudio
 import wave
+
+from matplotlib.widgets import Slider, Button
 from scipy.interpolate import pchip_interpolate
 from functions import *
 
 # initialize pyaudio
 p = pyaudio.PyAudio()
+
+# The function to be called anytime a slider's value changes
+def update(val):
+    global snr_target
+    snr_target = gain_slider.val
+
+
+def reset(event):
+    gain_slider.reset()
+
 
 # callback function
 def callback(in_data, frame_count, time_info, flag):
@@ -35,13 +47,13 @@ def callback(in_data, frame_count, time_info, flag):
     # buf_sig_cur = buf_noi_cur * rms_energy(buf_noi_cur) / rms_energy(buf_sig_cur)
 
     # Hanning windowing
-    win = np.hanning(FRAMESIZE)
-    win_sound = buf_sig_cur * win[:]
-    win_noise = buf_noi_cur * win[:]
+    # win = np.hanning(FRAMESIZE)
+    # win_sound = buf_sig_cur * win[:]
+    # win_noise = buf_noi_cur * win[:]
 
     # FFT --> frequency domain
-    Sound = np.fft.rfft(win_sound, FRAMESIZE)
-    Noise = np.fft.rfft(win_noise, FRAMESIZE)
+    Sound = np.fft.rfft(buf_sig_cur, FRAMESIZE)
+    Noise = np.fft.rfft(buf_noi_cur, FRAMESIZE)
     f = np.fft.rfftfreq(FRAMESIZE, 1 / RATE)
 
     # filter banks and central frequencies
@@ -57,9 +69,7 @@ def callback(in_data, frame_count, time_info, flag):
     cnt_hz = scale2f(cnt_scale, scale)
 
     # computation of modulation factors
-    snr_target = 2                                                  # desired SNR
     limits = [0.2, 4.0]                                             # limits for the modulation factor
-
     k = set_snr(signal_bands, noise_bands, snr_target, limits)      # compute modulation factor matrix
 
     # interpolation
@@ -73,7 +83,7 @@ def callback(in_data, frame_count, time_info, flag):
     signal_eq = np.fft.irfft(Signal_eq, FRAMESIZE)
 
     # equalized signal is windowed again with hanning window, to remove modulation artifacts
-    signal_eq = signal_eq * win[:]
+    # signal_eq = signal_eq * win[:]
 
     # convert back to int16
     y = signal_eq.astype(np.int16)
@@ -97,6 +107,7 @@ FRAMESIZE = 1024
 FORMAT = p.get_format_from_width(sound_file.getsampwidth())
 CHANNELS = sound_file.getnchannels()
 RATE = sound_file.getframerate()
+snr_target = 2
 
 # overlapping buffers
 buf_sig_cur = np.zeros(FRAMESIZE)                                           # current sonification buffer
@@ -109,6 +120,26 @@ overlap = FRAMESIZE // n_overlap                                            # ov
 # start and stop indexes for sonification buffer
 start = 0
 stop = FRAMESIZE
+
+# Make a horizontal slider to control the gain
+axcolor = 'lightgoldenrodyellow'
+init_gain = 2
+axgain = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
+gain_slider = Slider(
+    ax=axgain,
+    label='SNR TARGET',
+    valmin=-10,
+    valmax=10,
+    valinit=init_gain,
+)
+
+# register the update function with each slider
+gain_slider.on_changed(update)
+
+# Create a `matplotlib.widgets.Button` to reset the sliders to initial values.
+resetax = plt.axes([0.4, 0.025, 0.1, 0.04])
+button = Button(resetax, 'Reset', color=axcolor, hovercolor='0.975')
+button.on_clicked(reset)
 
 # Open a stream object to write the WAV file to
 stream = p.open(format=FORMAT,
@@ -124,6 +155,7 @@ stream.start_stream()
 
 # Play the sound by writing the audio data to the stream
 while stream.is_active():
+    plt.show()
     time.sleep(get_duration(sonification_path))
     stream.stop_stream()
 
