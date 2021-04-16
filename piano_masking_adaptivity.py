@@ -53,15 +53,14 @@ win_noise = buf_noise * win[:, None]
 Signal, f_signal, t_signal = stft(win_signal, hop_size, fs)
 Noise, f_noise, t_noise = stft(win_noise, hop_size, fs)
 
-# filter banks and central frequencies
-scale = 'erb'                                                                       # frequency scale
+# filter bank and central frequencies
+scale = 'erb'                                                                   # frequency scale
 n_bands = 21
-fb_signal, cnt_signal = getFilterBank(f_signal, scale=scale, nband=n_bands)         # filter bank for signal
-fb_noise, cnt_noise = getFilterBank(f_noise, scale=scale, nband=n_bands)            # filter bank for noise
+fb, cnt_scale = getFilterBank(f_signal, scale=scale, nband=n_bands)
 
 # spectral filtering
-signal_bands = applyFilterBank(abs(Signal), fb_signal)
-noise_bands = applyFilterBank(abs(Noise), fb_noise)
+signal_bands = applyFilterBank(abs(Signal), fb)
+noise_bands = applyFilterBank(abs(Noise), fb)
 
 # maximum dB values for plot comparison
 max_db_signal = maximum_db(Signal, signal_bands)
@@ -81,18 +80,17 @@ plot_spectrum(noise_bands, f_noise, t_noise, title='band splitted noise', max_db
 plt.show()
 
 # convert center frequencies into Hz
-cnt_hz_s = scale2f(cnt_signal, scale)
-cnt_hz_n = scale2f(cnt_noise, scale)
+cnt_hz = scale2f(cnt_scale, scale)
 
 # computation of modulation factors
 snr_target = 2                                                      # desired SNR
 limits = [0.2, 4.0]                                                 # limits for the modulation factor
 
 k = set_snr(signal_bands, noise_bands, snr_target, limits)          # compute modulation factor matrix
-k, cnt_hz_s = add_limit_bands(k, cnt_hz_s, f_signal)    # add the lower and the upper bands to avoid under/overshooting
+k, cnt_hz = add_limit_bands(k, cnt_hz, f_signal)    # add the lower and the upper bands to avoid under/overshooting
 
 # interpolation
-k_interp = pchip_interpolate(cnt_hz_s, k, f_signal)
+k_interp = pchip_interpolate(cnt_hz, k, f_signal)
 
 # interpolated equalization mask plot
 plot_spectrum(k_interp, f_signal, t_signal, title='equalization mask', min_db=None)
