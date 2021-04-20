@@ -56,20 +56,20 @@ signal_bands = applyFilterBank(abs(Signal), fb_signal)
 noise_bands = applyFilterBank(abs(Noise), fb_noise)
 
 # maximum dB values for plot comparison
-max_db_signal = maximum_db(Signal, signal_bands)
-max_db_noise = maximum_db(Noise, noise_bands)
+max_db_signal = maximumDB(Signal, signal_bands)
+max_db_noise = maximumDB(Noise, noise_bands)
 
 # plot spectra
 plt.subplot(221)
-plot_spectrum(Signal, f_signal, t_signal, title='signal spectrum', max_db=max_db_signal)
+plotSpectrum(Signal, f_signal, t_signal, title='signal spectrum', max_db=max_db_signal)
 plt.subplot(222)
-plot_spectrum(Noise, f_noise, t_noise, title='noise spectrum', max_db=max_db_noise)
+plotSpectrum(Noise, f_noise, t_noise, title='noise spectrum', max_db=max_db_noise)
 
 # band splitted signal plots
 plt.subplot(223)
-plot_spectrum(signal_bands, f_signal, t_signal, title='band splitted signal', max_db=max_db_signal, freq_scale=scale)
+plotSpectrum(signal_bands, f_signal, t_signal, title='band splitted signal', max_db=max_db_signal, freq_scale=scale)
 plt.subplot(224)
-plot_spectrum(noise_bands, f_noise, t_noise, title='band splitted noise', max_db=max_db_noise, freq_scale=scale)
+plotSpectrum(noise_bands, f_noise, t_noise, title='band splitted noise', max_db=max_db_noise, freq_scale=scale)
 plt.show()
 
 # convert center frequencies into Hz
@@ -81,7 +81,7 @@ snr_target = 5                                                      # desired SN
 n_bands, n_frames = signal_bands.shape                              # number of bands and number of frames
 limits = [0.9, 4.0]                                                 # limits for the modulation factor
 
-k = set_snr(signal_bands, noise_bands, snr_target, limits)  # compute modulation factor matrix
+k = setSNR(signal_bands, noise_bands, snr_target, limits)  # compute modulation factor matrix
 
 # interpolation
 k_interp = pchip_interpolate(cnt_hz_s, k, f_signal)
@@ -90,11 +90,11 @@ k_interp = pchip_interpolate(cnt_hz_s, k, f_signal)
 Signal_eq = Signal * k_interp
 
 # plot new spectrum
-max_db = maximum_db(Signal, Signal_eq)
+max_db = maximumDB(Signal, Signal_eq)
 plt.subplot(121)
-plot_spectrum(Signal, f_signal, t_signal, title='original signal spectrum', max_db=max_db)
+plotSpectrum(Signal, f_signal, t_signal, title='original signal spectrum', max_db=max_db)
 plt.subplot(122)
-plot_spectrum(Signal_eq, f_signal, t_signal, title='equalized signal spectrum', max_db=max_db)
+plotSpectrum(Signal_eq, f_signal, t_signal, title='equalized signal spectrum', max_db=max_db)
 plt.show()
 
 # inverse STFT to get equalized audio signal

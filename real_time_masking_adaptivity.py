@@ -20,19 +20,20 @@ def reset(event):
 
 # callback function
 def callback(in_data, frame_count, time_info, flag):
-    global start, stop, buf_sig_cur, buf_sig_next, buf_noi_cur, buf_sig_next
+    global buf_sig_cur, buf_sig_next, buf_noi_cur, buf_sig_next
 
-    # sound
-    # sound = sonification[start:stop]
+    max_sample = 2 ** 15
 
     # sound
     audio_data = sound_file.readframes(FRAMESIZE)
     sound = np.frombuffer(audio_data, dtype=np.int16)
-    sound = sound.astype(np.float64)
+    sound = sound / max_sample
 
     # noise
     noise = np.frombuffer(in_data, dtype=np.int16)
-    noise = noise.astype(np.float64)
+    noise = noise / max_sample
+
+    sound, noise = setSameLength(sound, noise)
 
     # overlapping buffers
     buf_sig_cur[:] = buf_sig_next[:]                            # set the next buffer as the current buffer
@@ -57,8 +58,8 @@ def callback(in_data, frame_count, time_info, flag):
     f = np.fft.rfftfreq(FRAMESIZE, 1 / RATE)
 
     # filter banks and central frequencies
-    scale = 'erb'                                                   # frequency scale
-    n_bands = 21
+    scale = 'bark'                                                   # frequency scale
+    n_bands = 24
     fb, cnt_scale = getFilterBank(f, scale=scale, nband=n_bands)    # filter bank for signal
 
     # spectral filtering
@@ -70,10 +71,10 @@ def callback(in_data, frame_count, time_info, flag):
 
     # computation of modulation factors
     limits = [0.2, 4.0]                                             # limits for the modulation factor
-    k = set_snr(signal_bands, noise_bands, snr_target, limits)      # compute modulation factor matrix
+    k = setSNR(signal_bands, noise_bands, snr_target, limits)  # compute modulation factor matrix
 
     # interpolation
-    k, cnt_hz_s = add_limit_bands(k, cnt_hz, f)         # add the lower and the upper bands to avoid under/overshooting
+    k, cnt_hz_s = addLimitBands(k, cnt_hz, f)  # add the lower and the upper bands to avoid under/overshooting
     k_interp = pchip_interpolate(cnt_hz_s, k, f)
 
     # signal spectrum equalization
@@ -85,12 +86,10 @@ def callback(in_data, frame_count, time_info, flag):
     # equalized signal is windowed again with hanning window, to remove modulation artifacts
     # signal_eq = signal_eq * win[:]
 
+    signal_eq = signal_eq * max_sample
+
     # convert back to int16
     y = signal_eq.astype(np.int16)
-
-    # update start and stop indexes
-    start += FRAMESIZE
-    stop += FRAMESIZE
 
     return y.tobytes(), pyaudio.paContinue
 
@@ -116,10 +115,6 @@ buf_noi_cur = np.zeros(FRAMESIZE)                                           # cu
 buf_noi_next = np.zeros(FRAMESIZE)                                          # next noise buffer
 n_overlap = 2                                                               # number of overlapping frames
 overlap = FRAMESIZE // n_overlap                                            # overlapping samples
-
-# start and stop indexes for sonification buffer
-start = 0
-stop = FRAMESIZE
 
 # Make a horizontal slider to control the gain
 axcolor = 'lightgoldenrodyellow'
@@ -156,7 +151,7 @@ stream.start_stream()
 # Play the sound by writing the audio data to the stream
 while stream.is_active():
     plt.show()
-    time.sleep(get_duration(sonification_path))
+    # time.sleep(get_duration(sonification_path))
     stream.stop_stream()
 
 # Close stream and terminate pyaudio

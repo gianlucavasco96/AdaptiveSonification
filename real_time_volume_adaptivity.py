@@ -27,7 +27,7 @@ def callback(in_data, frame_count, time_info, flag):
     noise = np.frombuffer(in_data, dtype=np.int16)
     noise = noise.astype(np.float64)
 
-    sound, noise = set_same_length(sound, noise)
+    sound, noise = setSameLength(sound, noise)
 
     # volume adaptivity: SNR is kept constant inside a specified sound intensity range,
     # outside of witch the signal volume is kept constant
@@ -35,7 +35,7 @@ def callback(in_data, frame_count, time_info, flag):
     limits = [0.2, 1.0]  # limits for the modulation factor
 
     # get modulation term
-    modulation = get_modulation(sound, noise, gain, limits)
+    modulation = getModulation(sound, noise, gain, limits)
 
     # apply the modulation factor to the signal
     sound = sound * modulation
@@ -93,7 +93,7 @@ stream.start_stream()
 # Play the sound by writing the audio data to the stream
 while stream.is_active():
     plt.show()
-    time.sleep(get_duration(sonification_path))
+    time.sleep(getDuration(sonification_path))
     stream.stop_stream()
 
 # Close stream and terminate pyaudio

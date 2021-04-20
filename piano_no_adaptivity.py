@@ -28,7 +28,7 @@ amb_sound = amb_sound / max_sample
 sonification = sonification / max_sample
 
 # signals adjusting: they must have the same length
-sonification, amb_sound = set_same_length(sonification, amb_sound)
+sonification, amb_sound = setSameLength(sonification, amb_sound)
 
 # the noisy signal is the simple sum of the sonification sound and the ambience sound
 noisy_signal = sonification + amb_sound

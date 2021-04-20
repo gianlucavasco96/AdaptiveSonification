@@ -20,11 +20,11 @@ print('Initial SNR is ' + str(snr(tone, noise)) + ' dB')
 
 # intellegibility test
 # for i in range(-50, 50, 5):
-#     adj_tone = set_snr(tone, noise, i)
-#     sound(adj_tone + noise, fs)
+#     adaptive_sonif = set_snr(tone, noise, i)
+#     sound(adaptive_sonif + noise, fs)
 
 # adaptive adjustment: constant SNR
-slope = draw_slope(fs)                          # compute variable slope of the noise signal
+slope = drawSlope(fs)  # compute variable slope of the noise signal
 noise = slope * noise                           # apply it to the noise signal
 
 fixed_snr = 10                                  # SNR value we want to keep constant
@@ -39,7 +39,7 @@ for i in range(int(n_samples/w_size)):          # for each window
     win_signal = tone[start:stop]               # consider the windowed signal
     win_noise = noise[start:stop]               # consider the windowed noise
 
-    adj_signal = set_snr_time(win_signal, win_noise, fixed_snr, limits)  # adjust windowed signal amplitude
+    adj_signal = setSnrTime(win_signal, win_noise, fixed_snr, limits)  # adjust windowed signal amplitude
     adj_tone = np.append(adj_tone, adj_signal)                  # append it to the new sine tone array
 
 noisy_signal = adj_tone + noise                 # sum the new adjusted sine tone and the noise signal

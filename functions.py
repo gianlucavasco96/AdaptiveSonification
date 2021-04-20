@@ -11,7 +11,7 @@ from pydub import AudioSegment
 eps = 10e-9                                         # dummy variable to avoid divide by zero errors
 
 
-def add_limit_bands(k, cnt, f):
+def addLimitBands(k, cnt, f):
     """This function adds to (matrix) k two rows or elements, one at the top and one at the bottom, such that k first
     and last frequency values match f vector ones"""
 
@@ -93,7 +93,7 @@ def bark2f(bark):
     return f
 
 
-def bound_interpolation(k, limits):
+def boundInterpolation(k, limits):
     """This function takes a matrix k and makes sure that all of its values are bounded between the input limits"""
 
     # find undershooting indexes, caused by the fact that np.min(f_signal) < np.min(cnt_hz_s)
@@ -126,7 +126,7 @@ def db2amp(db):
     return amp
 
 
-def draw_slope(fs):
+def drawSlope(fs):
     """This function computes the slope of the noise signal"""
 
     slope = np.linspace(0.1, 1, 3 * fs)
@@ -241,23 +241,7 @@ def fade(x, leng, typ='inout', shape=2):
     return x
 
 
-def get_bandwidth(freqs):
-    """This function computes the bandwidth of the input center frequency
-    If an array is passed, the function returns the array of corresponding bandwidths"""
-
-    if isinstance(freqs, np.ndarray):                   # if freqs is an array
-        bw = np.zeros(len(freqs))                       # create the empty bandwidths array
-        start = 0                                       # set the start index to 0
-        for i in range(len(freqs)):                     # for each value in freqs
-            bw[i] = (freqs[i] - start) * 2              # the cur bdwth is twice the diff btw cur freq and start index
-            start += bw[i]                              # update start index
-
-        return bw
-    else:                                               # if freqs is a scalar
-        return 2 * freqs                                # bandwidth is twice its value
-
-
-def get_duration(path):
+def getDuration(path):
     """This function returns the duration in seconds of the input audio file"""
 
     audio, fs = audioread(path)
@@ -292,7 +276,7 @@ def getFilterBank(F, nband=12, scale='mel', wfunc=np.bartlett):
     return fbank, cnt
 
 
-def get_mask(bands, start, stop, type='linear'):
+def getNoiseMask(bands, start, stop, type='linear'):
     """This function computes the corrective mask to apply to the band splitted noise matrix, in order not to equalize
     the signal (in next steps) where it contains silence"""
 
@@ -322,7 +306,7 @@ def get_mask(bands, start, stop, type='linear'):
     return mask
 
 
-def get_modulation(signal, noise, gain, limits=None):
+def getModulation(signal, noise, gain, limits=None):
     """This function computes the modulation factor that has to be applied to the sonification signal"""
 
     env_sig = envelope(signal, 'rms')                   # get the mobile RMS envelope of signal
@@ -371,7 +355,7 @@ def logf2linf(nn, fref=440, nref=69, edo=12):
     return np.exp2((nn - nref) / edo) * fref
 
 
-def maximum_db(X, Y):
+def maximumDB(X, Y):
     """This function computes the maximum value in dB of the two input spectra"""
 
     # dB convertion
@@ -391,7 +375,7 @@ def mel2f(mel):
     return 700.0 * ((10.0 ** (np.asarray(mel) / 2595)) - 1)
 
 
-def plot_spectrum(S, f, t, title=None, min_db=-48, max_db=None, freq_scale='Hz', interp='antialiased'):
+def plotSpectrum(S, f, t, title=None, min_db=-48, max_db=None, freq_scale='Hz', interp='antialiased'):
     """This function plots the spectrum of the computed STFT, as an image"""
 
     data = amp2db(abs(S))
@@ -412,41 +396,7 @@ def plot_spectrum(S, f, t, title=None, min_db=-48, max_db=None, freq_scale='Hz',
     plt.draw()
 
 
-def real_time_plot(S, f, t):
-    """This function plots in real time the shape of the input spectrum S over time"""
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-
-    data = amp2db(abs(S))
-    min_value = np.min(data)
-    max_value = np.max(data)
-    n_frames = len(t)
-
-    mean_time = 0.08443909635146458                     # mean execution time for one plot
-    tot_plots = t[-1] / mean_time                       # number of plots in the total time
-    step = int(n_frames // tot_plots)                   # step to plot in real time
-
-    times = []
-    strt = time.time()
-
-    for i in range(0, n_frames, step):
-        a = time.time()
-        ax.plot(f, data[:, i])
-        plt.xlabel('frequency (Hz)')
-        plt.ylabel('Magnitude (dB)')
-        plt.title('Real time spectrum')
-        ax.set_ylim(min_value, max_value)
-        fig.canvas.draw()
-        # time.sleep(dt)
-        ax.clear()
-        times.append(time.time() - a)
-    print('mean execution time: ' + str(np.mean(times)) + ' s')
-    print('total execution time: ' + str(time.time() - strt) + ' s')
-    fig.show()
-
-
-def rms_energy(signal):
+def rmsEnergy(signal):
     """This function computes the root mean square energy of the input signal"""
 
     if isinstance(signal, np.ndarray):
@@ -468,7 +418,7 @@ def scale2f(signal, scale):
     return x2f(signal)
 
 
-def set_same_length(signal, noise):
+def setSameLength(signal, noise):
     """This function compares the two input signals and modifies them, such that they have the same length"""
 
     s_len = len(signal)
@@ -485,13 +435,13 @@ def set_same_length(signal, noise):
     return signal, noise
 
 
-def set_snr(signal, noise, snr_target, limits=None):
+def setSNR(signal, noise, snr_target, limits=None):
     """This function takes in input a clear signal and a noise signal (matrices) and modifies
     the clear one so that the signal to noise ratio is the one specified by the 3rd parameter.
     This function works in frequency domain"""
 
     # correction mask: it ensures that noise is lower than signal, where signal itself is very low
-    noise_mask = get_mask(signal, start=-35, stop=-25, type='linear')
+    noise_mask = getNoiseMask(signal, start=-30, stop=-20, type='linear')
     noise = noise_mask * noise
 
     k = snr_target * np.abs(noise) / (np.abs(signal) + eps)     # compute the ratio between the snr target and the real
@@ -509,7 +459,7 @@ def set_snr(signal, noise, snr_target, limits=None):
     return k
 
 
-def set_snr_time(signal, noise, snr_target, limits=None, onlyk=False):
+def setSnrTime(signal, noise, snr_target, limits=None, onlyk=False):
     """This function takes in input a clear signal and a noise signal and modifies the clear one so that the signal
     to noise ratio is the one specified by the 3rd parameter.
     This function works in time domain"""
@@ -541,8 +491,8 @@ def set_snr_time(signal, noise, snr_target, limits=None, onlyk=False):
 def snr(x, y):
     """This function computes the signal to noise ratio between the two input signals x and y"""
 
-    rms_x = rms_energy(x)
-    rms_y = rms_energy(y)
+    rms_x = rmsEnergy(x)
+    rms_y = rmsEnergy(y)
     rms_y = rms_y if rms_y != 0 else rms_y + eps
 
     return rms_x / rms_y
@@ -583,7 +533,7 @@ def sound(signal, fs):
     sd.wait()
 
 
-def surface_graph(S, f, t):
+def surfaceGraph(S, f, t):
     data = amp2db(abs(S))
 
     fig = go.Figure(data=[go.Surface(x=t, y=f, z=data, cmin=-48, cmax=np.max(data), colorscale='Greens')])
@@ -635,7 +585,7 @@ def wgn(A, n_samples, freq, fs, filt=False):
     return noise
 
 
-def window_idx(i, w_size, max_length):
+def windowIdx(i, w_size, max_length):
     """This function computes the start and the stop indexes of the windowed signals"""
 
     start = int(i * w_size)                         # set the start point

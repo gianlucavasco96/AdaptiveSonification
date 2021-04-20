@@ -12,14 +12,16 @@ sig = np.array([])
 def callback(in_data, frame_count, time_info, flag):
     global start, stop, buf_sound, buf_noise, sig
 
+    max_sample = 2 ** 15
+
     # sound
     audio_data = sound_file.readframes(overlap)
-    sound_audio = np.frombuffer(audio_data, dtype=np.int16)
-    sound = sound_audio.astype(np.float64)
+    sound = np.frombuffer(audio_data, dtype=np.int16)
+    sound = sound / max_sample
 
     # noise
     noise = np.frombuffer(in_data, dtype=np.int16)
-    noise = noise.astype(np.float64)
+    noise = noise / max_sample
 
     # overlapping buffers
     buf_sound = shift(buf_sound, overlap)
@@ -42,8 +44,8 @@ def callback(in_data, frame_count, time_info, flag):
     f = np.fft.rfftfreq(FRAMESIZE, 1 / RATE)
 
     # filter banks and central frequencies
-    scale = 'erb'                                                   # frequency scale
-    n_bands = 15
+    scale = 'bark'                                                   # frequency scale
+    n_bands = 24
     fb, cnt_scale = getFilterBank(f, scale=scale, nband=n_bands)    # filter bank for signal
 
     # spectral filtering
@@ -57,10 +59,10 @@ def callback(in_data, frame_count, time_info, flag):
     snr_target = 2                                                  # desired SNR
     limits = [0.2, 4.0]                                             # limits for the modulation factor
 
-    k = set_snr(signal_bands, noise_bands, snr_target, limits)      # compute modulation factor matrix
+    k = setSNR(signal_bands, noise_bands, snr_target, limits)  # compute modulation factor matrix
 
     # interpolation
-    k, cnt_hz_s = add_limit_bands(k, cnt_hz, f)         # add the lower and the upper bands to avoid under/overshooting
+    k, cnt_hz_s = addLimitBands(k, cnt_hz, f)  # add the lower and the upper bands to avoid under/overshooting
     k_interp = pchip_interpolate(cnt_hz_s, k, f)
 
     # signal spectrum equalization
@@ -71,6 +73,8 @@ def callback(in_data, frame_count, time_info, flag):
 
     # equalized signal is windowed again with hanning window, to remove modulation artifacts
     # signal_eq = signal_eq * win[:]
+
+    signal_eq = signal_eq * max_sample
 
     # convert back to int16
     y = signal_eq.astype(np.int16)
@@ -118,7 +122,7 @@ stream.start_stream()
 
 # Play the sound by writing the audio data to the stream
 while stream.is_active():
-    time.sleep(get_duration(sonification_path))
+    time.sleep(getDuration(sonification_path))
     stream.stop_stream()
 
 # Close stream and terminate pyaudio

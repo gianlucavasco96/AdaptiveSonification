@@ -41,7 +41,7 @@ stream.start_stream()
 
 # Play the sound by writing the audio data to the stream
 while stream.is_active():
-    time.sleep(get_duration(sonification_path))
+    time.sleep(getDuration(sonification_path))
     stream.stop_stream()
 
 # Close stream and terminate pyaudio
