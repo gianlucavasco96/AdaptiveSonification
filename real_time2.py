@@ -74,6 +74,8 @@ def callback(in_data, frame_count, time_info, flag):
     # equalized signal is windowed again with hanning window, to remove modulation artifacts
     # signal_eq = signal_eq * win[:]
 
+    signal_eq = signal_eq[:overlap]
+
     signal_eq = signal_eq * max_sample
 
     # convert back to int16
