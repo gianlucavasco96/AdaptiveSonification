@@ -55,6 +55,16 @@ def applyFilterBank(psd, fbank):
         return np.asarray([fltc(psd[:, c], fbank) for c in range(psd.shape[1])]).T
 
 
+def audio2byte(audio_samples, max_sample=2**15):
+    """This function converts audio samples between -1 and 1 into bytes"""
+
+    audio_samples = audio_samples * max_sample
+    int_samples = audio_samples.astype(np.int16)
+
+    return int_samples.tobytes()
+
+
+
 def audioread(file_path, fs=None):
     """This function reads the input file as an audio file, using the AudioSegment library"""
 
@@ -116,6 +126,15 @@ def buffer(signal, framesize, hopsize):
         xpad = signal                                   # otherwise, the padded signal is the signal itself
 
     return np.asarray([xpad[i:i + framesize] for i in range(0, len(xpad) - framesize, hopsize)]).T
+
+
+def byte2audio(byte, max_sample=2**15):
+    """This function computes audio samples between -1 and 1, starting from a bytes input signal"""
+
+    int_samples = np.frombuffer(byte, dtype=np.int16)
+    audio_samples = int_samples / max_sample
+
+    return audio_samples
 
 
 def db2amp(db):

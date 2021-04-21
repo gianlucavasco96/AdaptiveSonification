@@ -12,16 +12,12 @@ sig = np.array([])
 def callback(in_data, frame_count, time_info, flag):
     global start, stop, buf_sound, buf_noise, sig
 
-    max_sample = 2 ** 15
-
     # sound
     audio_data = sound_file.readframes(overlap)
-    sound = np.frombuffer(audio_data, dtype=np.int16)
-    sound = sound / max_sample
+    sound = byte2audio(audio_data)
 
     # noise
-    noise = np.frombuffer(in_data, dtype=np.int16)
-    noise = noise / max_sample
+    noise = byte2audio(in_data)
 
     # overlapping buffers
     buf_sound = shift(buf_sound, overlap)
@@ -76,16 +72,13 @@ def callback(in_data, frame_count, time_info, flag):
 
     signal_eq = signal_eq[:overlap]
 
-    signal_eq = signal_eq * max_sample
-
-    # convert back to int16
-    y = signal_eq.astype(np.int16)
+    y = audio2byte(signal_eq)
 
     # update start and stop indexes
     start += overlap
     stop += overlap
 
-    return y.tobytes(), pyaudio.paContinue
+    return y, pyaudio.paContinue
 
 
 # sonification sound: piano samples, C major scale
