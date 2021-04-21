@@ -64,7 +64,6 @@ def audio2byte(audio_samples, max_sample=2**15):
     return int_samples.tobytes()
 
 
-
 def audioread(file_path, fs=None):
     """This function reads the input file as an audio file, using the AudioSegment library"""
 
