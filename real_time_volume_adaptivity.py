@@ -17,15 +17,18 @@ def update(val):
 def reset(event):
     gain_slider.reset()
 
+
 def callback(in_data, frame_count, time_info, flag):
+    global start, stop
     # sound
-    audio_data = sound_file.readframes(CHUNK)
-    sound = np.frombuffer(audio_data, dtype=np.int16)
-    sound = sound.astype(np.float64)
+    # audio_data = sound_file.readframes(CHUNK)
+    # sound = byte2audio(audio_data)
+
+    # sound is read from array for faster performances
+    sound = audio_data[start:stop]
 
     # noise
-    noise = np.frombuffer(in_data, dtype=np.int16)
-    noise = noise.astype(np.float64)
+    noise = byte2audio(in_data)
 
     sound, noise = setSameLength(sound, noise)
 
@@ -40,9 +43,12 @@ def callback(in_data, frame_count, time_info, flag):
     # apply the modulation factor to the signal
     sound = sound * modulation
 
-    y = sound.astype(np.int16)
+    y = audio2byte(sound)
 
-    return y.tobytes(), pyaudio.paContinue
+    start += CHUNK
+    stop += CHUNK
+
+    return y, pyaudio.paContinue
 
 
 # sonification sound: piano samples, C major scale
@@ -57,6 +63,14 @@ FORMAT = p.get_format_from_width(sound_file.getsampwidth())
 CHANNELS = sound_file.getnchannels()
 RATE = sound_file.getframerate()
 gain = 2
+
+# start and stop indexes for sonification reading
+start = 0
+stop = CHUNK
+
+# store sonification samples in array
+audio_data, _ = audioread(sonification_path, RATE)
+audio_data = audio_data / 2 ** 15
 
 # Make a horizontal slider to control the gain
 axcolor = 'lightgoldenrodyellow'
@@ -93,7 +107,7 @@ stream.start_stream()
 # Play the sound by writing the audio data to the stream
 while stream.is_active():
     plt.show()
-    time.sleep(getDuration(sonification_path))
+    # time.sleep(getDuration(sonification_path))
     stream.stop_stream()
 
 # Close stream and terminate pyaudio
