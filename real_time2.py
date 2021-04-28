@@ -1,9 +1,9 @@
-import matplotlib.pyplot as plt
-import pyaudio
-import wave
+import time
 
+import pyaudio
 from matplotlib.widgets import Slider, Button
 from scipy.interpolate import pchip_interpolate
+
 from functions import *
 
 # initialize pyaudio
@@ -28,7 +28,7 @@ def callback(in_data, frame_count, time_info, flag):
     noise = byte2audio(in_data)
 
     # make sure that sound and noise have the same length
-    sound, noise = setSameLength(sound, noise)
+    sound, noise = setSameLength(sound, noise, padding=True)
 
     # overlapping buffers
     buf_sound = shift(buf_sound, overlap)
@@ -94,14 +94,11 @@ def callback(in_data, frame_count, time_info, flag):
 # sonification sound: piano samples, C major scale
 sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/piano_mono.wav'     # audio must be mono
 
-# Open the sound file
-sound_file = wave.open(sonification_path, 'rb')
-
 # audio settings
 FRAMESIZE = 1024
-FORMAT = p.get_format_from_width(sound_file.getsampwidth())
-CHANNELS = sound_file.getnchannels()
-RATE = sound_file.getframerate()
+FORMAT = 8
+CHANNELS = 1
+RATE = 44100
 snr_target = 2                                              # desired SNR
 
 audio_data, _ = audioread(sonification_path, RATE)
@@ -124,9 +121,9 @@ axgain = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
 gain_slider = Slider(
     ax=axgain,
     label='GAIN [amp]',
-    valmin=-10.0,
+    valmin=0.01,
     valmax=10.0,
-    valinit=init_gain,
+    valinit=init_gain
 )
 
 # register the update function with each slider

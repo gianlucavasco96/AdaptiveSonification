@@ -1,5 +1,4 @@
 import pyaudio
-import wave
 
 from matplotlib.widgets import Button, Slider
 
@@ -30,12 +29,12 @@ def callback(in_data, frame_count, time_info, flag):
     # noise
     noise = byte2audio(in_data)
 
-    sound, noise = setSameLength(sound, noise)
+    sound, noise = setSameLength(sound, noise, padding=True)
 
     # volume adaptivity: SNR is kept constant inside a specified sound intensity range,
     # outside of witch the signal volume is kept constant
 
-    limits = [0.2, 1.0]  # limits for the modulation factor
+    limits = [0.2, 2.0]  # limits for the modulation factor
 
     # get modulation term
     modulation = getModulation(sound, noise, gain, limits)
@@ -54,14 +53,11 @@ def callback(in_data, frame_count, time_info, flag):
 # sonification sound: piano samples, C major scale
 sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/piano_mono.wav'     # audio must be mono
 
-# Open the sound file
-sound_file = wave.open(sonification_path, 'rb')
-
 # audio settings
 CHUNK = 1024
-FORMAT = p.get_format_from_width(sound_file.getsampwidth())
-CHANNELS = sound_file.getnchannels()
-RATE = sound_file.getframerate()
+FORMAT = 8                                                                      # int16
+CHANNELS = 1
+RATE = 44100
 gain = 2
 
 # start and stop indexes for sonification reading

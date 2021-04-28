@@ -15,7 +15,8 @@ sound_name = 'piano.wav'
 
 # audio reading
 sonification, fs = audioread(sound_path + sound_name)
-amb_sound, _ = audioread(noise_path + sound_type + '/' + noise_name, fs=fs)
+# amb_sound, _ = audioread(noise_path + sound_type + '/' + noise_name, fs=fs)
+amb_sound, _ = audioread('D:/Gianluca/Università/Magistrale/Tesi/soundscapes/fabbrica.mp3', fs)
 
 # setup parameters
 n_bit = 16                                      # number of quantization bits

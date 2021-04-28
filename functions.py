@@ -2,7 +2,6 @@ import numpy as np
 import sounddevice as sd
 import scipy as sp
 import plotly.graph_objects as go
-import time
 from matplotlib import pyplot as plt
 from scipy.signal import butter, lfilter
 from scipy.interpolate import interp1d
@@ -436,7 +435,7 @@ def scale2f(signal, scale):
     return x2f(signal)
 
 
-def setSameLength(signal, noise):
+def setSameLength(signal, noise, padding=False):
     """This function compares the two input signals and modifies them, such that they have the same length"""
 
     s_len = len(signal)
@@ -447,8 +446,11 @@ def setSameLength(signal, noise):
     elif s_len > n_len:                                     # if signal is longer than noise
         signal = signal[:n_len]                             # signal is cut, such that it matches the noise length
     else:                                                   # if noise is longer than signal
-        diff = n_len - s_len                                # compute the samples difference
-        signal = np.append(signal, np.zeros((diff,)))       # append to signal as many zeros as the samples difference
+        if padding:
+            diff = n_len - s_len                            # compute the samples difference
+            signal = np.append(signal, np.zeros((diff,)))   # append to signal as many zeros as the samples difference
+        else:
+            noise = noise[:s_len]                               # noise is cut, such that it matches the signal length
 
     return signal, noise
 
