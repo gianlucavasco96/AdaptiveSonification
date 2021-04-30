@@ -19,9 +19,6 @@ def reset(event):
 
 def callback(in_data, frame_count, time_info, flag):
     global start, stop
-    # sound
-    # audio_data = sound_file.readframes(CHUNK)
-    # sound = byte2audio(audio_data)
 
     # sound is read from array for faster performances
     sound = audio_data[start:stop]

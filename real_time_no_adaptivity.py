@@ -1,3 +1,5 @@
+import time
+
 import pyaudio
 import wave
 from functions import *
@@ -6,27 +8,34 @@ from functions import *
 p = pyaudio.PyAudio()
 
 def callback(in_data, frame_count, time_info, flag):
-    # sound
-    audio_data = sound_file.readframes(CHUNK)
+    global start, stop
 
-    return audio_data, pyaudio.paContinue
+    # sound is read from array for faster performances
+    sound = audio_data[start:stop]
+
+    start += CHUNK
+    stop += CHUNK
+
+    return audio2byte(sound), pyaudio.paContinue
 
 
 # sonification sound: piano samples, C major scale
-sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/piano_mono.wav'     # audio must be mono
-
-# Open the sound file
-sound_file = wave.open(sonification_path, 'rb')
+sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/sonifications/piano.wav'
+# sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/sonifications/voice.wav'
 
 # audio settings
 CHUNK = 1024
-FORMAT = p.get_format_from_width(sound_file.getsampwidth())
-CHANNELS = sound_file.getnchannels()
-RATE = sound_file.getframerate()
+FORMAT = 8                                                                      # int16
+CHANNELS = 1
+RATE = 44100
 
-# start and stop indexes for sonification buffer
+# start and stop indexes for sonification reading
 start = 0
 stop = CHUNK
+
+# store sonification samples in array
+audio_data, _ = audioread(sonification_path, RATE)
+audio_data = audio_data / 2 ** 15
 
 # Open a stream object to write the WAV file to
 stream = p.open(format=FORMAT,
