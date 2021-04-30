@@ -9,12 +9,12 @@ file_name = '47160.wav'
 
 # audio reading
 # sonification sound: piano samples, C major scale
-sound_path = 'D:/Gianluca/Università/Magistrale/Tesi/'
-sound_name = 'piano.wav'
+sound_path = 'D:/Gianluca/Università/Magistrale/Tesi/sonifications/'
+sound_name = 'voice.wav'
 
 # audio reading
 sonification, fs = audioread(sound_path + sound_name)
-amb_sound, _ = audioread(path + sound_type + '/' + file_name, fs)
+amb_sound, _ = audioread('D:/Gianluca/Università/Magistrale/Tesi/soundscapes/fabbrica.mp3', fs)
 
 # setup parameters
 n_bit = 16                                      # number of quantization bits
@@ -35,7 +35,7 @@ sonification = sonification * rmsEnergy(amb_sound) / rmsEnergy(sonification)
 # volume adaptivity: SNR is kept constant inside a specified sound intensity range,
 # outside of witch the signal volume is kept constant
 
-gain = 3                                                # gain factor: SNR target (amplitude value, not dB)
+gain = 1.5                                                # gain factor: SNR target (amplitude value, not dB)
 limits = [0.2, 2.0]                                     # limits for the modulation factor
 
 # get modulation term

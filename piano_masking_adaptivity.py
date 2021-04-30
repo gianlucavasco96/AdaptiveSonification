@@ -10,8 +10,8 @@ sound_type = 'drilling'
 noise_name = '71529.wav'
 
 # sonification sound: piano samples, C major scale
-sound_path = 'D:/Gianluca/Università/Magistrale/Tesi/'
-sound_name = 'piano.wav'
+sound_path = 'D:/Gianluca/Università/Magistrale/Tesi/sonifications/'
+sound_name = 'voice.wav'
 
 # audio reading
 sonification, fs = audioread(sound_path + sound_name)
@@ -86,7 +86,7 @@ plt.show()
 cnt_hz = scale2f(cnt_scale, scale)
 
 # computation of modulation factors
-snr_target = 2                                                      # desired SNR
+snr_target = 1.5                                                      # desired SNR
 limits = [0.2, 4.0]                                                 # limits for the modulation factor
 
 k = setSNR(signal_bands, noise_bands, snr_target, limits)           # compute modulation factor matrix

@@ -51,7 +51,8 @@ def callback(in_data, frame_count, time_info, flag):
 
 
 # sonification sound: piano samples, C major scale
-sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/piano_mono.wav'     # audio must be mono
+sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/sonifications/voice.wav'
+# sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/sonifications/piano.wav'
 
 # audio settings
 CHUNK = 1024
