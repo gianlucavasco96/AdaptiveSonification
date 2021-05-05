@@ -1,6 +1,3 @@
-import time
-
-import numpy as np
 import pyaudio
 from matplotlib.widgets import Slider, Button
 from scipy.interpolate import pchip_interpolate
@@ -20,7 +17,7 @@ def reset(event):
 
 # callback function
 def callback(in_data, frame_count, time_info, flag):
-    global start, stop, buf_sound, buf_noise, adapt_sonif, w
+    global start, stop, buf_sound, buf_noise, adapt_sonif, w, limits
 
     # sound is read from array for faster performances
     sound = audio_data[start:stop]
@@ -64,8 +61,6 @@ def callback(in_data, frame_count, time_info, flag):
     cnt_hz = scale2f(cnt_scale, scale)
 
     # computation of modulation factors
-    limits = [0.2, 4.0]                                             # limits for the modulation factor
-
     k = setSNR(signal_bands, noise_bands, snr_target, limits)  # compute modulation factor matrix
 
     # interpolation
@@ -85,22 +80,24 @@ def callback(in_data, frame_count, time_info, flag):
     adapt_sonif = shift(adapt_sonif, overlap)
     w = shift(w, overlap)
 
-    # set adaptive sonification and window array last quarter to 0 (eps for window)
+    # set adaptive sonification and window array last quarter to 0
     adapt_sonif[-overlap:] = 0
     w[-overlap:] = 0.1
 
     # add equalized signal to adaptive sonification array
     adapt_sonif[:] += signal_eq
 
-    # add squared Hanning window to window array
+    # add squared Hanning window to window array and set to 0.1 all zero values
     w[:] += win ** 2
+    w[w == 0.0] = 0.1
 
+    # demodulation
     adapt_sonif[:] = adapt_sonif / w
 
-    # signal_eq = signal_eq[:overlap]
+    # since overlap samples have been taken as input, first overlap samples have to be taken as output
     out = adapt_sonif[:overlap]
 
-    # y = audio2byte(signal_eq)
+    # convert audio to bytes
     y = audio2byte(out)
 
     # update start and stop indexes
@@ -111,16 +108,18 @@ def callback(in_data, frame_count, time_info, flag):
 
 
 # sonification sound: piano samples or speech
-sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/sonifications/voice.wav'
-# sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/sonifications/piano.wav'
+# sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/sonifications/voice.wav'
+sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/sonifications/piano.wav'
 
 # audio settings
-FRAMESIZE = 1024
-FORMAT = 8
-CHANNELS = 1
-RATE = 44100
+FRAMESIZE = 1024                                            # buffer-frame size
+FORMAT = 8                                                  # int16 format
+CHANNELS = 1                                                # mono
+RATE = 44100                                                # sampling rate
 snr_target = 2                                              # desired SNR
+limits = [0.2, 4.0]                                         # limits for the modulation factor
 
+# sonification reading and normalization
 audio_data, _ = audioread(sonification_path, RATE)
 audio_data = audio_data / 2 ** 15
 
@@ -138,7 +137,7 @@ stop = overlap
 adapt_sonif = np.zeros(FRAMESIZE)
 
 # window array
-w = np.zeros(FRAMESIZE) + 0.1
+w = np.zeros(FRAMESIZE)
 
 # Make a horizontal slider to control the gain
 axcolor = 'lightgoldenrodyellow'
