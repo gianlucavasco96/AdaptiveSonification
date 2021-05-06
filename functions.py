@@ -344,6 +344,41 @@ def getModulation(signal, noise, gain, limits=None):
     return modulation
 
 
+def getRealTimeModulation(sound, noise, gain, previous, limits=None, leng=1024, rate=0.5):
+    """This function computes the real time modulation factor that has to be applied to the sonification signal"""
+
+    # compute sonification and soundscape rms energy
+    rms_sig = rmsEnergy(sound)
+    rms_noi = rmsEnergy(noise)
+
+    # initialize the modulation array
+    modulation = np.zeros(leng)
+
+    # compute the modulation factor (this time it is a number)
+    mod_factor = gain * rms_noi / (rms_sig + eps)
+
+    if limits is not None:
+        min_value = limits[0]                                           # set minimum modulation value
+        max_value = limits[1]                                           # set maximum modulation value
+
+        if mod_factor < min_value:
+            mod_factor = min_value
+        if mod_factor > max_value:
+            mod_factor = max_value
+
+    # compute ramp and set the remaining samples with the modulation factor
+    if previous == -1:                                                  # first iteration
+        modulation[:] = mod_factor                                      # there is no previous mod factor, so no ramp
+    else:
+        # compute stop index of the ramp
+        stop = int(leng * rate)
+
+        modulation[:stop] = np.linspace(previous, mod_factor, stop)     # from previous to mod factor in stop samples
+        modulation[stop:] = mod_factor                                  # remaining samples are set to mod factor
+
+    return modulation, mod_factor
+
+
 def interpolate(new_x, old_x, y):
     """This function computes the interpolation of a vector y on a new axis new_x"""
 

@@ -82,20 +82,17 @@ def callback(in_data, frame_count, time_info, flag):
 
     # set adaptive sonification and window array last quarter to 0
     adapt_sonif[-overlap:] = 0
-    w[-overlap:] = 0.1
+    w[-overlap:] = 0
 
     # add equalized signal to adaptive sonification array
     adapt_sonif[:] += signal_eq
 
-    # add squared Hanning window to window array and set to 0.1 all zero values
+    # add squared Hanning window to window array and set to eps all zero values
     w[:] += win ** 2
-    w[w == 0.0] = 0.1
-
-    # demodulation
-    adapt_sonif[:] = adapt_sonif / w
+    w[w == 0.0] = eps
 
     # since overlap samples have been taken as input, first overlap samples have to be taken as output
-    out = adapt_sonif[:overlap]
+    out = adapt_sonif[:overlap] / w[:overlap]
 
     # convert audio to bytes
     y = audio2byte(out)

@@ -1,7 +1,5 @@
 import pyaudio
-
 from matplotlib.widgets import Button, Slider
-
 from functions import *
 
 # initialize pyaudio
@@ -18,7 +16,7 @@ def reset(event):
 
 
 def callback(in_data, frame_count, time_info, flag):
-    global start, stop
+    global start, stop, mod_previous
 
     # sound is read from array for faster performances
     sound = audio_data[start:stop]
@@ -34,7 +32,8 @@ def callback(in_data, frame_count, time_info, flag):
     limits = [0.2, 2.0]  # limits for the modulation factor
 
     # get modulation term
-    modulation = getModulation(sound, noise, gain, limits)
+    # modulation = getModulation(sound, noise, gain, limits)
+    modulation, mod_factor = getRealTimeModulation(sound, noise, gain, mod_previous, limits)
 
     # apply the modulation factor to the signal
     sound = sound * modulation
@@ -44,12 +43,14 @@ def callback(in_data, frame_count, time_info, flag):
     start += CHUNK
     stop += CHUNK
 
+    mod_previous = mod_factor
+
     return y, pyaudio.paContinue
 
 
 # sonification sound: piano samples, C major scale
-sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/sonifications/voice.wav'
-# sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/sonifications/piano.wav'
+# sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/sonifications/voice.wav'
+sonification_path = 'D:/Gianluca/Università/Magistrale/Tesi/sonifications/piano.wav'
 
 # audio settings
 CHUNK = 1024
@@ -57,6 +58,7 @@ FORMAT = 8                                                                      
 CHANNELS = 1
 RATE = 44100
 gain = 2
+mod_previous = -1
 
 # start and stop indexes for sonification reading
 start = 0

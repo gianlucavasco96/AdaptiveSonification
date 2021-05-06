@@ -11,7 +11,7 @@ noise_name = '71529.wav'
 
 # sonification sound: piano samples, C major scale
 sound_path = 'D:/Gianluca/Università/Magistrale/Tesi/sonifications/'
-sound_name = 'voice.wav'
+sound_name = 'piano.wav'
 
 # audio reading
 sonification, fs = audioread(sound_path + sound_name)
