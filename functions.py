@@ -33,6 +33,15 @@ def addLimitBands(k, cnt, f):
     return k, cnt
 
 
+def addPadding(data, fs, time):
+    """This function adds time seconds of silence to the input data"""
+
+    padding = np.zeros(fs * time)
+    data = np.hstack((padding, data))
+
+    return data
+
+
 def amp2db(amp, thres=-np.inf):
     """This function converts amplitude values into dB values"""
 
@@ -258,6 +267,16 @@ def fade(x, leng, typ='inout', shape=2):
     return x
 
 
+def boneConductingFilter(audio, a, b, zi):
+    """This function filters the input audio to compensate the bone conducting headphone equalization"""
+
+    n_filt = 4                                                      # number of filters
+    for i in range(n_filt):
+        audio, zi[i, :] = lfilter(b[i], a[i], audio, zi=zi[i, :])
+
+    return audio * db2amp(2.4)
+
+
 def getDuration(path):
     """This function returns the duration in seconds of the input audio file"""
 
@@ -344,7 +363,7 @@ def getModulation(signal, noise, gain, limits=None):
     return modulation
 
 
-def getRealTimeModulation(sound, noise, gain, previous, limits=None, leng=1024, rate=0.5):
+def getRealTimeModulation(sound, noise, gain, previous, limits=None, leng=1024, rate=0.5, offset=db2amp(0)):
     """This function computes the real time modulation factor that has to be applied to the sonification signal"""
 
     # compute sonification and soundscape rms energy
@@ -355,7 +374,7 @@ def getRealTimeModulation(sound, noise, gain, previous, limits=None, leng=1024, 
     modulation = np.zeros(leng)
 
     # compute the modulation factor (this time it is a number)
-    mod_factor = gain * rms_noi / (rms_sig + eps)
+    mod_factor = offset * gain * rms_noi / (rms_sig + eps)
 
     if limits is not None:
         min_value = limits[0]                                           # set minimum modulation value
@@ -391,6 +410,18 @@ def istft(X):
     """This function computes the real iFFT along columns"""
 
     return np.fft.irfft(X, axis=0)
+
+
+def limiter(audio):
+    """This function prevents audio clipping, rescaling the audio vector"""
+
+    max_value = np.max(np.abs(audio))
+    if max_value > 1:
+        audio = audio / max_value
+
+    return audio
+
+
 
 
 def linf2logf(f, fref=440, nref=69, edo=12):
@@ -490,7 +521,7 @@ def setSameLength(signal, noise, padding=False):
     return signal, noise
 
 
-def setSNR(signal, noise, snr_target, limits=None):
+def setSNR(signal, noise, snr_target, limits=None, offset=db2amp(0)):
     """This function takes in input a clear signal and a noise signal (matrices) and modifies
     the clear one so that the signal to noise ratio is the one specified by the 3rd parameter.
     This function works in frequency domain"""
@@ -499,7 +530,8 @@ def setSNR(signal, noise, snr_target, limits=None):
     noise_mask = getNoiseMask(signal, start=-30, stop=-20, type='linear')
     noise = noise_mask * noise
 
-    k = snr_target * np.abs(noise) / (np.abs(signal) + eps)     # compute the ratio between the snr target and the real
+    # compute the ratio between the snr target and the real
+    k = offset * snr_target * np.abs(noise) / (np.abs(signal) + eps)
 
     if limits is not None:
         min_value = limits[0]                       # set minimum modulation value

@@ -35,11 +35,11 @@ sonification = sonification * rmsEnergy(amb_sound) / rmsEnergy(sonification)
 # volume adaptivity: SNR is kept constant inside a specified sound intensity range,
 # outside of witch the signal volume is kept constant
 
-gain = 1.5                                                # gain factor: SNR target (amplitude value, not dB)
+snr_target = 1.5                                                # gain factor: SNR target (amplitude value, not dB)
 limits = [0.2, 2.0]                                     # limits for the modulation factor
 
 # get modulation term
-modulation = getModulation(sonification, amb_sound, gain, limits)
+modulation = getModulation(sonification, amb_sound, snr_target, limits)
 
 adaptive_sonif = sonification * modulation              # apply the modulation factor to the signal
 noisy_signal = adaptive_sonif + amb_sound               # sum the adaptive sonification to the noise signal
