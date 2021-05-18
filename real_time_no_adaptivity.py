@@ -1,11 +1,16 @@
+import sys
 import time
 import pyaudio
 from functions import *
 
 # CONTROLLI TEST
-test = True                     # if True: training; if False: test --> add padding
-fast = False                         # if True: "frasi veloci"; if False: "frasi lente"
-num_sentence = 1                    # number of the sentence (from 1 to 64 --> test; from 65 to 100 --> training)
+fast = sys.argv[1] == 'True'        # if True: "frasi veloci"; if False: "frasi lente"
+num_sentence = sys.argv[2]          # number of the sentence (from 1 to 64 --> test; from 65 to 100 --> training)
+test = sys.argv[3] == 'True'        # if True: test mode --> add padding; if False: training mode --> no padding
+
+# STAMPA INFO PROGRAMMA
+speed = " veloce" if fast else " lenta"
+print("Nessun adattamento, Frase " + str(num_sentence) + speed)
 
 calibration_gain = db2amp(-10)
 
@@ -72,7 +77,7 @@ stream.start_stream()
 
 # Play the sound by writing the audio data to the stream
 while stream.is_active():
-    print("start")
+    print("START")
     time.sleep(getDuration(sonification_path) + 15)
     stream.stop_stream()
 

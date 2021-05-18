@@ -12,7 +12,7 @@ num_sentence = sys.argv[2]          # number of the sentence (from 1 to 64 --> t
 
 # STAMPA INFO PROGRAMMA
 speed = " veloce" if fast else " lenta"
-print("Equalizzazione adattiva 0 dB, Frase " + str(num_sentence) + speed)
+print("Equalizzazione adattiva 10 dB, Frase " + str(num_sentence) + speed)
 
 calibration_gain = db2amp(-10)
 
@@ -136,7 +136,7 @@ FRAMESIZE = 1024                                            # buffer-frame size
 FORMAT = 8                                                  # int16 format
 CHANNELS = 1                                                # mono
 RATE = 44100                                                # sampling rate
-snr_target = db2amp(0)                                      # desired SNR: 0 dB
+snr_target = db2amp(10)                                     # desired SNR: +10 dB
 limits = [db2amp(-12), db2amp(18)]                          # limits for the modulation factor
 
 # sonification reading and normalization

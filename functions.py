@@ -1,4 +1,7 @@
+import random
+
 import numpy as np
+import pandas as pd
 import sounddevice as sd
 import scipy as sp
 import plotly.graph_objects as go
@@ -422,8 +425,6 @@ def limiter(audio):
     return audio
 
 
-
-
 def linf2logf(f, fref=440, nref=69, edo=12):
     """This function takes frequency values expressed in linear Hz to a log scale"""
     # fref=440, nref=69, edo=12 for typical MIDI nn setup
@@ -499,6 +500,77 @@ def scale2f(signal, scale):
     }.get(scale.lower())
 
     return x2f(signal)
+
+
+def setControlVariables(user=1, repetition=1, task=1, test=True):
+    """This function initialises the control variables for the real time test"""
+
+    adaptivity = {"nessuno": "real_time_no_adaptivity.py",
+                  "volume": "real_time_volume_adaptivity.py",
+                  "eq 0": "real_time_masking_adaptivity.py",
+                  "eq positivo": "real_time_masking_adaptivity_pos.py"}
+
+    if test:
+        path = 'D:/Gianluca/Università/Magistrale/Tesi/test/ordine.xlsx'
+        df = pd.read_excel(path)
+
+        if repetition == 1:
+            df = df[:16]
+            if user in [1, 5, 9, 13]:
+                start = 0
+            elif user in [2, 6, 10, 14]:
+                start = 4
+            elif user in [3, 7, 11, 15]:
+                start = 8
+            else:
+                start = 12
+        elif repetition == 2:
+            df = df[16:32]
+            if user in [1, 5, 9, 13]:
+                start = 16
+            elif user in [2, 6, 10, 14]:
+                start = 20
+            elif user in [3, 7, 11, 15]:
+                start = 24
+            else:
+                start = 28
+        elif repetition == 3:
+            df = df[32:48]
+            if user in [1, 5, 9, 13]:
+                start = 32
+            elif user in [2, 6, 10, 14]:
+                start = 36
+            elif user in [3, 7, 11, 15]:
+                start = 40
+            else:
+                start = 44
+        else:
+            df = df[48:]
+            if user in [1, 5, 9, 13]:
+                start = 48
+            elif user in [2, 6, 10, 14]:
+                start = 52
+            elif user in [3, 7, 11, 15]:
+                start = 56
+            else:
+                start = 60
+
+        idx = start + (task - 1)
+        if idx >= 16 * repetition:
+            idx -= 16
+
+        row = df.loc[idx]
+        script = adaptivity[row['Adattamento']]
+        fast = row['Velocità']
+        sentence = row['# Frase']
+        soundscape = row['Soundscape']
+    else:
+        script = adaptivity['nessuno']
+        fast = random.choice([True, False])
+        sentence = random.randint(64, 99)
+        soundscape = 'nessuno'
+
+    return script, fast, sentence, soundscape
 
 
 def setSameLength(signal, noise, padding=False):

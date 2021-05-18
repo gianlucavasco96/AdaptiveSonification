@@ -1,11 +1,16 @@
 import pyaudio
+import sys
 import time
 # from matplotlib.widgets import Button, Slider
 from functions import *
 
 # CONTROLLI TEST
-fast = True                         # if True: "frasi veloci"; if False: "frasi lente"
-num_sentence = 1                    # number of the sentence (from 1 to 64 --> test)
+fast = sys.argv[1] == 'True'        # if True: "frasi veloci"; if False: "frasi lente"
+num_sentence = sys.argv[2]          # number of the sentence (from 1 to 64 --> test; from 65 to 100 --> training)
+
+# STAMPA INFO PROGRAMMA
+speed = " veloce" if fast else " lenta"
+print("Volume adattivo, Frase " + str(num_sentence) + speed)
 
 calibration_gain = db2amp(-10)
 
@@ -132,7 +137,7 @@ stream.start_stream()
 
 # Play the sound by writing the audio data to the stream
 while stream.is_active():
-    print("start")
+    print("START")
     # plt.show()
     time.sleep(getDuration(sonification_path) + 15)
     stream.stop_stream()
