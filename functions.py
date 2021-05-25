@@ -1,5 +1,5 @@
 import random
-
+import plotly.express as pt
 import numpy as np
 import pandas as pd
 import sounddevice as sd
@@ -480,6 +480,23 @@ def plotSpectrum(S, f, t, title=None, min_db=-48, max_db=None, freq_scale='Hz', 
     plt.draw()
 
 
+def printBoxplot(data, labels, column):
+    """This function plots the boxplot of the input distribution"""
+
+    if column == 'Parole corrette':
+        column = '% Parole corrette'
+
+    plt.boxplot(data, labels=labels, patch_artist=True, flierprops=dict(alpha=.1), showmeans=True)
+    plt.ylabel(column)
+    plt.show()
+
+
+def printViolinplot(df, y='Parole corrette'):
+    """This function plots the violin plots of the input distributions"""
+
+    fig = pt.violin(df, x='Adattamento', y=y, box=True, range_y=[0, 100] if y == 'Parole corrette' else [1, 5])
+    fig.show()
+
 def rmsEnergy(signal):
     """This function computes the root mean square energy of the input signal"""
 
@@ -665,6 +682,25 @@ def shift(array, n):
         --> return [1, 2, 3, 0]"""
 
     return np.hstack((array[n:], array[:n]))
+
+
+def starMatrix(result):
+    """This function prints the p-value matrix of the post hoc test and the corresponding star matrix"""
+
+    idx_ns = result > .05
+    idx_s = (result > .01) & (result <= .05)
+    idx_ss = (result > .001) & (result <= .01)
+    idx_sss = (result > .0001) & (result <= .001)
+
+    result_star = result.copy()
+    result_star[idx_ns] = 'ns'
+    result_star[idx_s] = '*'
+    result_star[idx_ss] = '**'
+    result_star[idx_sss] = '***'
+
+    print(result)
+    print()
+    print(result_star)
 
 
 def stft(x, hopsize=None, fs=None):
